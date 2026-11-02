@@ -16,7 +16,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-COPY --from=web-builder /web/dist/ ./internal/web/static/
+COPY --from=web-builder /web/dist/ ./internal/api/static/
 RUN CGO_ENABLED=0 go build -o /out/jp .
 
 FROM alpine:3.22

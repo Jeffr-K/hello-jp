@@ -81,7 +81,7 @@ github.com/meshestra/go-playground/jp
 ├── internal/memory/
 ├── internal/repository/postgres/
 ├── internal/tools/
-└── internal/web/static/index.html
+└── internal/api/static/index.html
 ```
 
 ## 환경변수

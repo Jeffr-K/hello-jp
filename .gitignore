@@ -2,3 +2,5 @@
 /tmp/
 /content/
 *.log
+web/node_modules/
+web/dist/
