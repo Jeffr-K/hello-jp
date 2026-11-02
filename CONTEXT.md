@@ -69,7 +69,7 @@ github.com/meshestra/go-playground/jp
 
 ```text
 .
-├── main.go
+├── cmd/jp/main.go
 ├── Justfile
 ├── Dockerfile
 ├── docker-compose.yml
@@ -125,7 +125,7 @@ http://localhost:8080
 Agent Runtime 실행:
 
 ```bash
-go run . -mode agent \
+go run ./cmd/jp -mode agent \
   -user-id demo-user \
   -session-id default \
   -input "오늘 공부할 일본어를 추천해줘"

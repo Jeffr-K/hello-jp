@@ -18,19 +18,19 @@ check: fmt test
 # Build the CLI into tmp/.
 build:
 	mkdir -p tmp
-	GOCACHE={{go_cache}} go build -o /tmp/jp-today-japanese .
+	GOCACHE={{go_cache}} go build -o /tmp/jp-today-japanese ./cmd/jp
 
 # Generate today's Japanese learning content.
 run topic="운동과 관련된 일본어":
-	GOCACHE={{go_cache}} go run . -topic "{{topic}}"
+	GOCACHE={{go_cache}} go run ./cmd/jp -topic "{{topic}}"
 
 # Alias for the content generation command.
 generate topic="운동과 관련된 일본어":
-	GOCACHE={{go_cache}} go run . -topic "{{topic}}"
+	GOCACHE={{go_cache}} go run ./cmd/jp -topic "{{topic}}"
 
 # Start the local learning web app.
 serve:
-	GOCACHE={{go_cache}} go run . -mode web
+	GOCACHE={{go_cache}} go run ./cmd/jp -mode web
 
 # Start PostgreSQL and the web app with Docker Compose.
 docker-up:
