@@ -21,7 +21,7 @@ const historyKey = 'today-japanese-chat-history'
 const sessionKey = 'today-japanese-session-id'
 const newSessionId = () => 'session-' + Date.now()
 
-function Icon({ name }: { name: 'menu' | 'panel-left' | 'panel-right' | 'plus' | 'x' | 'send' }) {
+function Icon({ name }: { name: 'menu' | 'panel-left' | 'panel-right' | 'plus' | 'x' | 'send' | 'globe' | 'moon' | 'sun' }) {
   const paths = {
     menu: <><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="18" y2="18" /></>,
     'panel-left': <><rect width="18" height="18" x="3" y="3" rx="2" /><line x1="9" x2="9" y1="3" y2="21" /></>,
@@ -29,6 +29,9 @@ function Icon({ name }: { name: 'menu' | 'panel-left' | 'panel-right' | 'plus' |
     plus: <><line x1="12" x2="12" y1="5" y2="19" /><line x1="5" x2="19" y1="12" y2="12" /></>,
     x: <><line x1="6" x2="18" y1="6" y2="18" /><line x1="18" x2="6" y1="6" y2="18" /></>,
     send: <><path d="m4 4 16 8-16 8 3-8-3-8Z" /><path d="M7 12h13" /></>,
+    globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9S14.5 18.5 12 21c-2.5-2.5-3.5-5.5-3.5-9S9.5 5.5 12 3Z" /></>,
+    moon: <path d="M20.5 15.2A8.5 8.5 0 0 1 8.8 3.5 8.5 8.5 0 1 0 20.5 15.2Z" />,
+    sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
   }
   return <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>
 }
@@ -48,6 +51,8 @@ export function App() {
   const [rightOpen, setRightOpen] = useState(false)
   const [leftFolded, setLeftFolded] = useState(false)
   const [rightFolded, setRightFolded] = useState(false)
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('today-japanese-theme') === 'dark')
+  const [languageOpen, setLanguageOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [daily, setDaily] = useState<DailyContent | null>(null)
   const [dailyError, setDailyError] = useState('')
@@ -74,6 +79,10 @@ export function App() {
   }, [])
 
   useEffect(() => { localStorage.setItem(sessionKey, sessionId); if (path === '/') void loadHistory(sessionId) }, [loadHistory, path, sessionId])
+  useEffect(() => {
+    document.body.dataset.theme = darkMode ? 'dark' : 'light'
+    localStorage.setItem('today-japanese-theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
   useEffect(() => {
     if (path !== '/today') return
     fetch('/api/content/today').then((response) => response.ok ? response.json() : Promise.reject(new Error('오늘의 콘텐츠가 없습니다.'))).then(async (content: DailyContent) => {
@@ -160,12 +169,19 @@ export function App() {
     finally { setLoading(false); inputRef.current?.focus() }
   }
 
-  return <div className={'app-shell ' + (leftFolded ? 'left-folded ' : '') + (rightFolded ? 'right-folded' : '')}>
+  return <div className={'app-shell ' + (darkMode ? 'theme-dark ' : '') + (leftFolded ? 'left-folded ' : '') + (rightFolded ? 'right-folded' : '')}>
     <header className="topbar">
       <button className="icon-button desktop-only" onClick={() => setLeftFolded((value) => !value)} aria-label="왼쪽 패널 접기"><Icon name="panel-left" /></button>
       <button className="icon-button mobile-only" onClick={() => setLeftOpen(true)} aria-label="메뉴 열기"><Icon name="menu" /></button>
       <button className="brand" onClick={() => go('/')}><span>今日の日本語 · Today Japanese</span><small>매일 조금씩, 오래 기억하는 일본어</small></button>
-      <button className="icon-button" onClick={() => window.innerWidth <= 1200 ? setRightOpen(true) : setRightFolded((value) => !value)} aria-label="오늘의 학습 패널"><Icon name="panel-right" /></button>
+      <div className="header-actions">
+        <div className="language-picker">
+          <button className="icon-button" onClick={() => setLanguageOpen((value) => !value)} aria-label="언어 설정" title="언어 설정"><Icon name="globe" /></button>
+          {languageOpen && <div className="language-menu"><button onClick={() => setLanguageOpen(false)}>한국어</button><button onClick={() => setLanguageOpen(false)}>日本語</button><button onClick={() => setLanguageOpen(false)}>English</button></div>}
+        </div>
+        <button className="icon-button" onClick={() => setDarkMode((value) => !value)} aria-label={darkMode ? '라이트 테마' : '다크 테마'} title={darkMode ? '라이트 테마' : '다크 테마'}><Icon name={darkMode ? 'sun' : 'moon'} /></button>
+        <button className="icon-button" onClick={() => window.innerWidth <= 1200 ? setRightOpen(true) : setRightFolded((value) => !value)} aria-label="오늘의 학습 패널"><Icon name="panel-right" /></button>
+      </div>
     </header>
     <div className="layout">
       <aside className={'sidebar left-sidebar ' + (leftOpen ? 'drawer-open' : '')}>
