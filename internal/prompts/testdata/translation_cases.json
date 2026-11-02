@@ -1,0 +1,1 @@
+[{"name":"polite Korean to Japanese","input":"운동하러 왔습니다","expected_task":"translate","level":"N3"},{"name":"ambiguous Japanese","input":"これはいいです","expected_task":"translate","level":"N4"}]

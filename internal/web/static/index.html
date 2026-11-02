@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Today Japanese</title>
+  <style>
+    @font-face { font-family:"LINE Seed Sans KR"; src:url("/static/fonts/LINESeedKR-Th.woff2") format("woff2"); font-weight:300; font-style:normal; font-display:swap; }
+    @font-face { font-family:"LINE Seed Sans KR"; src:url("/static/fonts/LINESeedKR-Rg.woff2") format("woff2"); font-weight:400; font-style:normal; font-display:swap; }
+    @font-face { font-family:"LINE Seed Sans KR"; src:url("/static/fonts/LINESeedKR-Bd.woff2") format("woff2"); font-weight:700 900; font-style:normal; font-display:swap; }
+    :root { color-scheme: light; --ink:#17211b; --muted:#647067; --paper:#f7f5ef; --card:#fffdf8; --accent:#d85b3f; --line:#e6e2d8; }
+    * { box-sizing:border-box } body { margin:0; overflow-x:hidden; background:var(--paper); color:var(--ink); font-family:"LINE Seed Sans KR","LINE Seed","Noto Sans KR",ui-sans-serif,system-ui,sans-serif; line-height:1.6 }
+    .site-header { height:68px; border-bottom:1px solid var(--line); background:rgba(255,253,248,.88); padding:13px 24px; position:sticky; top:0; z-index:2; backdrop-filter:blur(12px) }
+    .brand { width:100%; min-height:42px; margin:0 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; position:relative }
+    .brand-name { font-size:18px; font-weight:400; letter-spacing:-.03em; text-align:center } .brand-note { color:var(--muted); font-size:13px; text-align:center }
+    .header-actions { position:absolute; inset:0; display:flex; justify-content:space-between; align-items:center; pointer-events:none }
+    .header-left-actions,.header-right-actions { display:flex; align-items:center; gap:8px; pointer-events:auto }
+    .header-panel-button,.menu-button,.panel-toggle { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border:1px solid var(--line); background:var(--card); padding:8px; border-radius:10px; font-size:13px }
+    .menu-button { display:none }
+    .page-layout { --left-sidebar-width:clamp(220px, 20vw, 320px); --right-sidebar-width:clamp(220px, 20vw, 320px); width:100%; margin:0; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,760px) minmax(0,1fr); gap:0; align-items:stretch }
+    main { min-width:0; padding:28px 28px 60px } main > header { padding:18px 0 24px }
+    .sidebar { position:sticky; top:0; width:min(var(--left-sidebar-width), 100%); height:auto; min-height:calc(100vh - 68px); margin:0; padding:28px; background:var(--card); border:0; border-right:1px solid var(--line); border-radius:0; color:var(--muted); font-size:13px; position:relative; overflow-x:hidden; overflow-y:auto }
+    .sidebar-right { width:min(var(--right-sidebar-width), 100%); justify-self:end; border-right:0; border-left:1px solid var(--line) }
+    .sidebar-left { display:flex; flex-direction:column }
+    .sidebar h2 { color:var(--ink); font-size:15px; margin-bottom:10px } .sidebar ul { list-style:none; margin:0; padding:0 } .sidebar li { padding:7px 0; border-bottom:1px solid var(--line) } .sidebar li:last-child { border-bottom:0 }
+    .today-learning-button { display:flex; align-items:center; justify-content:center; width:100%; margin:0 0 18px; padding:11px 13px; border:1px solid #efc2b3; border-radius:10px; background:#f7d8cc; color:#8e3f2d; font:inherit; text-decoration:none; cursor:pointer }
+    .today-learning-button:hover { border-color:#d85b3f; background:#f3c8b9; color:#783322 }
+    .sidebar-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:14px } .sidebar-heading h2 { margin:0 }
+    .chat-new { width:30px; height:30px; padding:6px; border-radius:8px } .chat-search { width:100%; border:1px solid var(--line); background:var(--paper); color:var(--ink); border-radius:9px; padding:8px 10px; margin-bottom:12px; outline:none; font:inherit; font-size:13px }
+    .chat-search { border:0; border-bottom:1px solid var(--line); border-radius:0; background:transparent; padding:8px 0; }
+    .chat-search:focus { border-color:var(--accent); box-shadow:none } .chat-history { display:flex; flex:1; min-height:0; overflow:auto; flex-direction:column; gap:4px; order:2 }
+    .sidebar-left .sidebar-heading { order:1 } .sidebar-left .chat-search { order:3; margin-top:12px; margin-bottom:0 }
+    .chat-item { position:relative; width:100%; text-align:left; border:0; background:transparent; border-radius:9px; padding:9px 32px 9px 10px; color:var(--ink); cursor:pointer; overflow:hidden }
+    .chat-item:hover,.chat-item.active { background:#f1ece2 } .chat-title { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; font-weight:400 } .chat-preview { display:block; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; margin-top:2px }
+    .chat-delete { position:absolute; top:50%; right:8px; display:inline-flex; width:20px; height:20px; align-items:center; justify-content:center; transform:translateY(-50%); color:var(--muted); opacity:0; border-radius:5px }
+    .chat-item:hover .chat-delete,.chat-item.active .chat-delete,.chat-delete:focus { opacity:1 !important }
+    .chat-delete:hover { color:var(--accent); background:#fff8f3 }
+    .chat-empty { color:var(--muted); font-size:12px; line-height:1.6; padding:10px 2px }
+    .resize-handle { position:absolute; top:0; bottom:0; width:8px; cursor:col-resize; z-index:3 }
+    .sidebar-left .resize-handle { right:-4px } .sidebar-right .resize-handle { left:-4px }
+    .icon { width:17px; height:17px; display:inline-block; vertical-align:-4px; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; fill:none }
+    .icon-button { display:inline-flex; align-items:center; gap:6px }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
+    .sidebar strong { color:var(--ink); display:block; margin-bottom:3px; font-weight:400 } .site-footer { border-top:1px solid var(--line); color:var(--muted); text-align:center; padding:22px 18px 32px; font-size:12px }
+    .eyebrow { color:var(--accent); font-size:12px; font-weight:400; letter-spacing:.14em; text-transform:uppercase }
+    h1 { margin:8px 0 4px; font-family:"LINE Seed Sans KR","LINE Seed","Noto Sans KR",sans-serif; font-size:42px; font-weight:400; letter-spacing:-.05em } h2 { font-size:18px; margin:0 0 14px; font-weight:400 }
+    .subtitle,.meaning { color:var(--muted) } section { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:20px; margin-top:14px; box-shadow:0 8px 24px #5d50330b }
+    .item { border-top:1px solid var(--line); padding:14px 0 2px } .item:first-child { border-top:0; padding-top:0 }
+    .jp { font-size:24px; font-weight:400; letter-spacing:.02em } .reading { color:var(--accent); font-size:14px; margin-top:3px }
+    .meaning { margin-top:5px } .explanation { white-space:pre-line; line-height:1.9 } .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px }
+    button { border:1px solid var(--line); background:#fff; border-radius:999px; padding:7px 12px; cursor:pointer; font-weight:400; color:var(--ink) }
+    button:hover { border-color:var(--accent); color:var(--accent) } .moments { white-space:pre-wrap; line-height:1.65; background:#f5efe3; border-radius:12px; padding:15px; font-size:14px }
+    .error { color:#a52820 }
+    .chat-app { height:calc(100vh - 68px); min-height:420px; display:flex; flex-direction:column; padding:28px 0 0; background:transparent; border:0; border-radius:0; box-shadow:none; margin-top:0 }
+    .chat-intro { margin:auto 0 24px; text-align:center }
+    .chat-intro h1 { margin-bottom:10px }
+    .chat-intro p { margin:0; color:var(--muted) }
+    .chat-messages { flex:1; display:flex; flex-direction:column; gap:12px; overflow:auto; padding:10px 0 24px }
+    .chat-message { max-width:82%; padding:10px 0; white-space:pre-wrap; overflow-wrap:anywhere }
+    .chat-message.assistant { align-self:flex-start }
+    .chat-message.user { align-self:flex-end; color:#783322; text-align:right }
+    .chat-loading { align-self:flex-end; width:120px; margin-top:-4px; color:var(--muted); font-size:11px; text-align:right }
+    .chat-loading-label { display:block; margin-bottom:4px }
+    .chat-loading-bar { height:3px; overflow:hidden; border-radius:999px; background:#f1d9ce }
+    .chat-loading-bar::after { content:""; display:block; width:42%; height:100%; border-radius:inherit; background:var(--accent); animation:chat-loading 1.1s ease-in-out infinite }
+    .chat-meta { align-self:flex-start; margin-top:-6px; color:var(--muted); font-size:11px }
+    @keyframes chat-loading { 0% { transform:translateX(-120%) } 100% { transform:translateX(300%) } }
+    .chat-empty { color:var(--muted); text-align:center; padding:16px }
+    .chat-form { position:sticky; bottom:0; display:flex; gap:10px; align-items:flex-end; padding:12px 0 16px; border-top:1px solid var(--line); background:linear-gradient(to bottom, transparent 0, var(--paper) 14px, var(--paper) 100%) }
+    .chat-input { flex:1; min-height:44px; max-height:140px; resize:vertical; border:1px solid var(--line); border-radius:13px; padding:11px 13px; background:var(--card); color:var(--ink); font:inherit; outline:none }
+    .chat-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px #d85b3f22 }
+    .chat-send { min-height:44px; border:0; border-radius:13px; padding:0 18px; background:var(--accent); color:#fff; font:inherit }
+    .chat-send:disabled { opacity:.55; cursor:wait }
+    body.left-folded .sidebar-left, body.right-folded .sidebar-right { width:48px; padding:28px 8px }
+    body.left-folded .sidebar-left > *:not(.resize-handle), body.right-folded .sidebar-right > *:not(.resize-handle) { display:none }
+    @media (max-width:1200px) {
+      .page-layout { grid-template-columns:minmax(0,1fr); width:100%; max-width:none; padding:0 18px } main { width:100%; padding:28px 0 60px } .sidebar { min-height:0; width:min(300px,85vw); }
+      .header-panel-button { display:none } .menu-button { display:inline-flex } .sidebar { display:none; position:fixed; z-index:5; top:68px; bottom:0; height:auto; width:min(300px,85vw); margin:0; border-radius:0; box-shadow:0 12px 32px #17211b33; overflow:auto }
+      .resize-handle { display:none }
+      .sidebar-left { left:0 } .sidebar-right { right:0 }
+      body.left-open .sidebar-left { display:flex } body.right-open .sidebar-right { display:block }
+      body.left-open::after, body.right-open::after { content:""; position:fixed; z-index:4; inset:68px 0 0; background:#17211b55 }
+      body.left-open.right-open::after { background:#17211b66 }
+    }
+    @media (max-width:520px) { .site-header { padding:13px 16px } .brand-note { display:none } h1 { font-size:36px } .jp { font-size:21px } }
+  </style>
+</head>
+<body>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute"><symbol id="icon-x" viewBox="0 0 24 24"><line x1="6" x2="18" y1="6" y2="18"></line><line x1="18" x2="6" y1="6" y2="18"></line></symbol></svg>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute"><symbol id="icon-plus" viewBox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></symbol></svg>
+<svg aria-hidden="true" width="0" height="0" style="position:absolute"><symbol id="icon-menu" viewBox="0 0 24 24"><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="18" y2="18"></line></symbol><symbol id="icon-panel-left" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"></rect><line x1="9" x2="9" y1="3" y2="21"></line></symbol><symbol id="icon-panel-right" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"></rect><line x1="15" x2="15" y1="3" y2="21"></line></symbol><symbol id="icon-volume" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></symbol><symbol id="icon-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></symbol></svg>
+<header class="site-header"><div class="brand"><div class="brand-name">今日の日本語 · Today Japanese</div><div class="brand-note">매일 조금씩, 오래 기억하는 일본어</div><div class="header-actions"><div class="header-left-actions"><button class="header-panel-button icon-button" type="button" id="leftFoldToggle" aria-label="왼쪽 패널 접기" title="왼쪽 패널 접기"><svg class="icon" aria-hidden="true"><use href="#icon-panel-left"></use></svg></button><button class="menu-button icon-button" type="button" id="menuToggle" aria-label="메뉴 열기" title="메뉴"><svg class="icon" aria-hidden="true"><use href="#icon-menu"></use></svg></button></div><div class="header-right-actions"><button class="panel-toggle icon-button" type="button" id="rightPanelToggle" aria-label="오른쪽 패널 접기" title="오른쪽 패널 접기"><svg class="icon" aria-hidden="true"><use href="#icon-panel-right"></use></svg></button></div></div></div></header>
+<div class="page-layout">
+<aside class="sidebar sidebar-left" aria-label="채팅 히스토리"><div class="resize-handle" data-resize="left" aria-hidden="true"></div><div class="sidebar-heading"><h2>Chats</h2><button class="chat-new" id="newChat" type="button" aria-label="새 학습 세션" title="새 학습 세션"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg></button></div><input class="chat-search" id="chatSearch" type="search" placeholder="대화 검색" aria-label="대화 검색"><div class="chat-history" id="chatHistory"></div></aside>
+<main>
+{{if .Today}}
+  <header>
+    <div class="eyebrow">Daily Japanese</div>
+    {{if .Content}}
+      <h1>{{.Content.Theme}}</h1><p class="subtitle">{{.Content.Date}} · {{.Content.Level}}</p>
+    {{else}}
+      <h1>오늘의 일본어</h1><p class="subtitle">준비된 학습 콘텐츠가 없습니다.</p>
+    {{end}}
+  </header>
+  {{if .Error}}<section class="error">{{.Error}}</section>{{end}}
+  {{with .Content}}
+  <section><h2>오늘의 대화</h2><div class="moments" id="moments">{{.MomentsText}}</div><div class="actions"><button class="icon-button" type="button" id="copy"><svg class="icon" aria-hidden="true"><use href="#icon-copy"></use></svg><span>게시글 복사</span></button></div></section>
+  <section><h2>오늘의 문장</h2>
+    {{range .Sentences}}<div class="item"><div class="jp">{{.Japanese}}</div><div class="reading">{{.Reading}}</div><div class="meaning">{{.Translation}}</div><div class="actions"><button class="icon-button" type="button" data-speak="{{.Japanese}}"><svg class="icon" aria-hidden="true"><use href="#icon-volume"></use></svg><span>듣기</span></button></div></div>{{end}}
+  </section>
+  <section><h2>오늘의 문법 · {{.Grammar.Pattern}}</h2><p class="meaning">{{.Grammar.Meaning}}</p><p class="explanation">{{.Grammar.Explanation}}</p>
+    {{range .Grammar.Examples}}<div class="item"><div class="jp">{{.Japanese}}</div><div class="reading">{{.Reading}}</div><div class="meaning">{{.Translation}}</div><div class="actions"><button class="icon-button" type="button" data-speak="{{.Japanese}}"><svg class="icon" aria-hidden="true"><use href="#icon-volume"></use></svg><span>듣기</span></button></div></div>{{end}}
+  </section>
+  <section><h2>오늘의 단어</h2>
+    {{range .Words}}<div class="item"><div class="jp">{{.Word}}</div><div class="reading">{{.Reading}}</div><div class="meaning">{{.Meaning}}</div><div class="actions"><button class="icon-button" type="button" data-speak="{{.Word}}"><svg class="icon" aria-hidden="true"><use href="#icon-volume"></use></svg><span>듣기</span></button></div><div class="meaning">예문: {{.Example}}<br>{{.ExampleTranslation}}</div></div>{{end}}
+  </section>
+  {{end}}
+{{else}}
+  <section class="chat-app" aria-label="RAG 일본어 학습 챗봇">
+    <div class="chat-intro"><div class="eyebrow">Japanese RAG Tutor</div><h1>무엇을 공부할까요?</h1><p>대화 기록과 학습 콘텐츠를 바탕으로 일본어를 함께 연습해요.</p></div>
+    <div class="chat-messages" id="chatMessages"><div class="chat-empty" id="chatEmpty">번역, 문법, 단어, 회화 연습을 질문해보세요.</div></div>
+    <form class="chat-form" id="chatForm"><textarea class="chat-input" id="chatInput" rows="1" placeholder="일본어 학습에 대해 물어보세요" aria-label="메시지 입력"></textarea><button class="chat-send" id="chatSend" type="submit">보내기</button></form>
+  </section>
+{{end}}
+</main>
+<aside class="sidebar sidebar-right" aria-label="오늘의 학습"><div class="resize-handle" data-resize="right" aria-hidden="true"></div><a class="today-learning-button" id="todayLearning" href="/today">오늘의 학습</a></aside>
+</div>
+<script>
+  const speak = text => { if (!('speechSynthesis' in window)) return alert('이 브라우저는 음성 재생을 지원하지 않습니다.'); speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(text); utterance.lang='ja-JP'; utterance.rate=.82; speechSynthesis.speak(utterance); };
+  document.querySelectorAll('[data-speak]').forEach(button => button.addEventListener('click', () => speak(button.dataset.speak)));
+  const copy = document.getElementById('copy');
+  if (copy) copy.addEventListener('click', async () => { await navigator.clipboard.writeText(document.getElementById('moments').textContent); copy.textContent='복사 완료'; });
+  const toggle = side => document.body.classList.toggle(side + '-open');
+  const fold = side => document.body.classList.toggle(side + '-folded');
+  document.getElementById('menuToggle').addEventListener('click', () => toggle('left'));
+  document.getElementById('rightPanelToggle').addEventListener('click', () => {
+    if (window.matchMedia('(max-width: 1200px)').matches) {
+      toggle('right');
+      return;
+    }
+    fold('right');
+  });
+  document.getElementById('todayLearning').addEventListener('click', () => {
+    if (window.matchMedia('(max-width: 1200px)').matches) document.body.classList.remove('right-open');
+  });
+  document.getElementById('leftFoldToggle').addEventListener('click', () => fold('left'));
+  const layout = document.querySelector('.page-layout');
+  const savedLeft = localStorage.getItem('today-japanese-left-width');
+  const savedRight = localStorage.getItem('today-japanese-right-width');
+  if (savedLeft) layout.style.setProperty('--left-sidebar-width', savedLeft + 'px');
+  if (savedRight) layout.style.setProperty('--right-sidebar-width', savedRight + 'px');
+  document.querySelectorAll('[data-resize]').forEach(handle => handle.addEventListener('pointerdown', event => {
+    if (window.matchMedia('(max-width: 1200px)').matches) return;
+    const side = handle.dataset.resize;
+    document.body.classList.remove(side + '-folded');
+    handle.setPointerCapture(event.pointerId);
+    const move = moveEvent => {
+      const minimum = 180, maximum = Math.min(480, window.innerWidth * .36);
+      const width = side === 'left' ? moveEvent.clientX : window.innerWidth - moveEvent.clientX;
+      const bounded = Math.max(minimum, Math.min(maximum, width));
+      layout.style.setProperty('--' + side + '-sidebar-width', bounded + 'px');
+      localStorage.setItem('today-japanese-' + side + '-width', String(Math.round(bounded)));
+    };
+    const stop = () => { handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', stop); };
+    handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', stop);
+  }));
+  const historyKey = 'today-japanese-chat-history';
+  let chatHistory = [];
+  try { chatHistory = JSON.parse(localStorage.getItem(historyKey) || '[]'); } catch (_) { chatHistory = []; }
+  const currentTitle = document.querySelector('main h1')?.textContent?.trim() || '오늘의 일본어';
+  const currentDate = new Date().toISOString().slice(0, 10);
+  if (!chatHistory.length) chatHistory = [{ id:'daily-' + currentDate, title:currentTitle, preview:'오늘의 학습 콘텐츠', active:true }];
+  const historyList = document.getElementById('chatHistory');
+  const search = document.getElementById('chatSearch');
+  const sessionKey = 'today-japanese-session-id';
+  const urlSessionID = new URLSearchParams(window.location.search).get('session_id');
+  let sessionID = urlSessionID || localStorage.getItem(sessionKey);
+  if (!sessionID) { sessionID = 'session-' + Date.now(); localStorage.setItem(sessionKey, sessionID); }
+  const resetChatMessages = () => {
+    const messages = document.getElementById('chatMessages');
+    if (messages) messages.innerHTML = '<div class="chat-empty">번역, 문법, 단어, 회화 연습을 질문해보세요.</div>';
+  };
+  const renderHistory = () => {
+    const query = (search.value || '').trim().toLowerCase();
+    const visible = chatHistory.filter(chat => !query || (chat.title + ' ' + (chat.preview || '')).toLowerCase().includes(query));
+    historyList.innerHTML = visible.length ? visible.map(chat => `<button class="chat-item${chat.active ? ' active' : ''}" type="button" data-chat-id="${String(chat.id).replace(/&/g,'&amp;').replace(/"/g,'&quot;')}"><span class="chat-title">${String(chat.title).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</span><span class="chat-preview">${String(chat.preview || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</span></button>`).join('') : '<div class="chat-empty">검색 결과가 없습니다.</div>';
+    historyList.querySelectorAll('[data-chat-id]').forEach(item => item.addEventListener('click', () => {
+      sessionID = item.dataset.chatId;
+      localStorage.setItem(sessionKey, sessionID);
+      chatHistory.forEach(chat => chat.active = chat.id === sessionID);
+      localStorage.setItem(historyKey, JSON.stringify(chatHistory));
+      window.location.href = '/?session_id=' + encodeURIComponent(sessionID);
+    }));
+    historyList.querySelectorAll('[data-chat-id]').forEach(item => {
+      const remove = document.createElement('span');
+      remove.className = 'chat-delete';
+      const removeIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      removeIcon.setAttribute('class', 'icon');
+      removeIcon.setAttribute('viewBox', '0 0 24 24');
+      removeIcon.setAttribute('aria-hidden', 'true');
+      removeIcon.innerHTML = '<use href="#icon-x"></use>';
+      remove.appendChild(removeIcon);
+      remove.setAttribute('role', 'button');
+      remove.setAttribute('tabindex', '0');
+      remove.setAttribute('aria-label', '대화 삭제');
+      item.appendChild(remove);
+      const deleteChat = event => {
+        event.stopPropagation();
+        const id = item.dataset.chatId;
+        chatHistory = chatHistory.filter(chat => chat.id !== id);
+        localStorage.setItem(historyKey, JSON.stringify(chatHistory));
+        if (id === sessionID) {
+          sessionID = 'session-' + Date.now();
+          localStorage.setItem(sessionKey, sessionID);
+          window.location.href = '/?session_id=' + encodeURIComponent(sessionID);
+          return;
+        }
+        renderHistory();
+      };
+      remove.addEventListener('click', deleteChat);
+      remove.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') deleteChat(event); });
+    });
+  };
+  search.addEventListener('input', renderHistory);
+  document.getElementById('newChat').addEventListener('click', () => {
+    sessionID = 'session-' + Date.now();
+    localStorage.setItem(sessionKey, sessionID);
+    chatHistory.forEach(chat => chat.active = false);
+    chatHistory.unshift({id:sessionID, title:'새 학습 세션', preview:'대화를 시작해보세요', active:true});
+    localStorage.setItem(historyKey, JSON.stringify(chatHistory));
+    window.location.href = '/?session_id=' + encodeURIComponent(sessionID);
+  });
+  renderHistory();
+  const chatForm = document.getElementById('chatForm');
+  const chatInput = document.getElementById('chatInput');
+  const chatMessages = document.getElementById('chatMessages');
+  const chatSend = document.getElementById('chatSend');
+  const addChatMessage = (role, content) => {
+    if (!chatMessages) return;
+    chatMessages.querySelector('.chat-empty')?.remove();
+    const message = document.createElement('div');
+    message.className = 'chat-message ' + role;
+    message.textContent = content;
+    chatMessages.appendChild(message);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return message;
+  };
+  const loadSession = async id => {
+    if (!chatMessages) return;
+    try {
+      const response = await fetch('/api/chat/history?session_id=' + encodeURIComponent(id));
+      if (!response.ok) return;
+      const messages = await response.json();
+      resetChatMessages();
+      messages.filter(message => message.role === 'user' || message.role === 'assistant').forEach(message => addChatMessage(message.role, message.content || ''));
+    } catch (_) {}
+  };
+  loadSession(sessionID);
+  if (chatForm) chatForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const input = chatInput.value.trim();
+    if (!input || chatSend.disabled) return;
+    const userMessage = addChatMessage('user', input);
+    chatInput.value = '';
+    chatSend.disabled = true;
+    chatSend.textContent = '생성 중…';
+    const loading = document.createElement('div');
+    loading.className = 'chat-loading';
+    loading.innerHTML = '<span class="chat-loading-label">응답 생성 중</span><div class="chat-loading-bar"></div>';
+    userMessage?.insertAdjacentElement('afterend', loading);
+    try {
+      const response = await fetch('/api/chat/stream', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id:'web-user', session_id:sessionID, input}) });
+      if (!response.ok || !response.body) throw new Error('chat stream failed');
+      const assistant = document.createElement('div');
+      assistant.className = 'chat-message assistant';
+      chatMessages.appendChild(assistant);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const result = await reader.read();
+        if (result.done) break;
+        buffer += decoder.decode(result.value, {stream:true});
+        const events = buffer.split('\n\n');
+        buffer = events.pop();
+        for (const event of events) {
+          const dataLine = event.split('\n').find(line => line.startsWith('data: '));
+          if (!dataLine) continue;
+          const payload = JSON.parse(dataLine.slice(6));
+          if (event.startsWith('event: delta')) assistant.textContent += payload.content || '';
+          if (event.startsWith('event: done')) {
+            loading.remove();
+            const meta = document.createElement('div');
+            meta.className = 'chat-meta';
+            meta.textContent = '응답 생성 ' + ((payload.elapsed_ms || 0) / 1000).toFixed(1) + '초';
+            assistant.insertAdjacentElement('afterend', meta);
+          }
+          if (event.startsWith('event: error')) throw new Error(payload.message || 'chat stream failed');
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+      }
+    } catch (_) {
+      loading.remove();
+      addChatMessage('assistant', '응답을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      chatSend.disabled = false;
+      chatSend.textContent = '보내기';
+      chatInput.focus();
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+    volumes:
+      - today_japanese_qdrant:/qdrant/storage
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-today_japanese}
+      POSTGRES_USER: ${POSTGRES_USER:-today_japanese}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-today_japanese_dev}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - today_japanese_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      WEB_ADDR: :8080
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_MODEL: ${LLM_MODEL:-gpt-5-mini}
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-today_japanese}
+      CONTENT_DIR: /app/content
+      DATABASE_URL: postgres://${POSTGRES_USER:-today_japanese}:${POSTGRES_PASSWORD:-today_japanese_dev}@db:5432/${POSTGRES_DB:-today_japanese}?sslmode=disable
+      DAILY_LEVEL: ${DAILY_LEVEL:-N3}
+      TTS_PROVIDER: ${TTS_PROVIDER:-browser}
+    ports:
+      - "${WEB_PORT:-8082}:8080"
+    volumes:
+      - ./content:/app/content:ro
+    command: ["-mode", "web"]
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_MODEL: ${LLM_MODEL:-gpt-5-mini}
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CONTENT_DIR: /app/content
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-today_japanese}
+      DAILY_LEVEL: ${DAILY_LEVEL:-N3}
+      DAILY_TOPIC: ${DAILY_TOPIC:-"운동과 관련된 일본어"}
+      SCHEDULE_TZ: ${SCHEDULE_TZ:-Asia/Seoul}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      EMAIL_RECIPIENTS: ${EMAIL_RECIPIENTS:-[]}
+    depends_on:
+      qdrant:
+        condition: service_started
+    volumes:
+      - ./content:/app/content
+    command: ["-mode", "scheduler"]
+
+volumes:
+  today_japanese_pgdata:
+  today_japanese_qdrant:
