@@ -169,7 +169,7 @@ export function App() {
     finally { setLoading(false); inputRef.current?.focus() }
   }
 
-  return <div className={'app-shell ' + (darkMode ? 'theme-dark ' : '') + (leftFolded ? 'left-folded ' : '') + (rightFolded ? 'right-folded' : '')}>
+  return <div className={'app-shell ' + (path === '/today' ? 'today-mode ' : '') + (darkMode ? 'theme-dark ' : '') + (leftFolded ? 'left-folded ' : '') + (rightFolded ? 'right-folded' : '')}>
     <header className="topbar">
       <button className="icon-button desktop-only" onClick={() => setLeftFolded((value) => !value)} aria-label="왼쪽 패널 접기"><Icon name="panel-left" /></button>
       <button className="icon-button mobile-only" onClick={() => setLeftOpen(true)} aria-label="메뉴 열기"><Icon name="menu" /></button>
