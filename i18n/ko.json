@@ -1,0 +1,20 @@
+{
+  "app.title": "오늘의 일본어",
+  "app.subtitle": "매일 조금씩, 오래 기억하는 일본어",
+  "chat.newSession": "새 학습 세션",
+  "chat.placeholder": "일본어 학습에 대해 질문해 보세요",
+  "chat.send": "메시지 보내기",
+  "chat.thinking": "답변을 준비하고 있어요",
+  "history.title": "대화 기록",
+  "today.title": "오늘의 학습",
+  "today.dialogue": "오늘의 대화",
+  "today.sentence": "오늘의 문장",
+  "today.grammar": "오늘의 문법",
+  "today.words": "오늘의 단어",
+  "today.culture": "문화·역사",
+  "today.practice": "연습 문제",
+  "today.complete": "오늘의 학습 완료",
+  "today.completed": "학습 완료됨",
+  "common.loading": "불러오는 중",
+  "common.error": "문제가 발생했습니다"
+}

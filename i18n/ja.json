@@ -1,0 +1,20 @@
+{
+  "app.title": "今日の日本語",
+  "app.subtitle": "毎日少しずつ、長く覚える日本語",
+  "chat.newSession": "新しい学習セッション",
+  "chat.placeholder": "日本語学習について質問してください",
+  "chat.send": "メッセージを送信",
+  "chat.thinking": "回答を準備しています",
+  "history.title": "会話履歴",
+  "today.title": "今日の学習",
+  "today.dialogue": "今日の会話",
+  "today.sentence": "今日の文",
+  "today.grammar": "今日の文法",
+  "today.words": "今日の単語",
+  "today.culture": "文化・歴史",
+  "today.practice": "練習問題",
+  "today.complete": "今日の学習を完了",
+  "today.completed": "学習完了",
+  "common.loading": "読み込み中",
+  "common.error": "問題が発生しました"
+}

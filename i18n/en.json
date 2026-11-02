@@ -1,0 +1,20 @@
+{
+  "app.title": "Today's Japanese",
+  "app.subtitle": "A little every day, remembered for a long time",
+  "chat.newSession": "New learning session",
+  "chat.placeholder": "Ask a question about learning Japanese",
+  "chat.send": "Send message",
+  "chat.thinking": "Preparing an answer",
+  "history.title": "Conversation history",
+  "today.title": "Today's lesson",
+  "today.dialogue": "Today's dialogue",
+  "today.sentence": "Today's sentence",
+  "today.grammar": "Today's grammar",
+  "today.words": "Today's words",
+  "today.culture": "Culture and history",
+  "today.practice": "Practice",
+  "today.complete": "Complete today's lesson",
+  "today.completed": "Lesson completed",
+  "common.loading": "Loading",
+  "common.error": "Something went wrong"
+}
