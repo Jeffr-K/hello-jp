@@ -1,4 +1,4 @@
-package httpapi
+package controller
 
 import (
 	"net/http"
@@ -8,16 +8,18 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/meshestra/go-playground/jp/internal/src-api/presentation/http/adapter"
 )
 
 func TestServerServesEmbeddedIndex(t *testing.T) {
-	server, err := NewServer(":8080", t.TempDir())
+	server, err := NewController(t.TempDir(), adapter.Dependencies{})
 	if err != nil {
 		t.Fatalf("create server: %v", err)
 	}
 
 	recorder := httptest.NewRecorder()
-	server.index(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
+	server.Index(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", recorder.Code)
@@ -35,13 +37,13 @@ func TestServerServesDailyContent(t *testing.T) {
 		t.Fatalf("write fixture: %v", err)
 	}
 
-	server, err := NewServer(":8080", contentDir)
+	server, err := NewController(contentDir, adapter.Dependencies{})
 	if err != nil {
 		t.Fatalf("create server: %v", err)
 	}
 
 	recorder := httptest.NewRecorder()
-	server.contentByDate(recorder, httptest.NewRequest(http.MethodGet, "/api/content/"+date, nil))
+	server.ContentByDate(recorder, httptest.NewRequest(http.MethodGet, "/api/content/"+date, nil))
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", recorder.Code, recorder.Body.String())
@@ -58,13 +60,13 @@ func TestServerRendersDailyContentWithGoTemplate(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(contentDir, date+".json"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	server, err := NewServer(":8080", contentDir)
+	server, err := NewController(contentDir, adapter.Dependencies{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	request := httptest.NewRequest(http.MethodGet, "/today", nil)
 	recorder := httptest.NewRecorder()
-	server.index(recorder, request)
+	server.Index(recorder, request)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", recorder.Code)
 	}
@@ -74,13 +76,13 @@ func TestServerRendersDailyContentWithGoTemplate(t *testing.T) {
 }
 
 func TestServerRejectsPathTraversal(t *testing.T) {
-	server, err := NewServer(":8080", t.TempDir())
+	server, err := NewController(t.TempDir(), adapter.Dependencies{})
 	if err != nil {
 		t.Fatalf("create server: %v", err)
 	}
 
 	recorder := httptest.NewRecorder()
-	server.contentByDate(recorder, httptest.NewRequest(http.MethodGet, "/api/content/../../secret", nil))
+	server.ContentByDate(recorder, httptest.NewRequest(http.MethodGet, "/api/content/../../secret", nil))
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", recorder.Code)

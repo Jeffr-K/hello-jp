@@ -37,6 +37,8 @@
 
 - Go HTTP 서버를 `internal/src-api/presentation/http`로 분리
 - API를 `presentation`, `application`, `domain`, `infrastructure` 4계층으로 분리
+- HTTP presentation을 `adapter`, `controller`, `router`로 분리
+- API boot lifecycle을 `cmd/api/api_boot.go`로 이동
 - Agent를 `internal/src-agent`로 분리
 - Scheduler를 `internal/src-batch`로 분리
 - `content`를 `internal/src-agent/content`로 이동

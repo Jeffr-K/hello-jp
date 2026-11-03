@@ -1,4 +1,4 @@
-package httpapi
+package controller
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -21,7 +20,7 @@ import (
 	"github.com/meshestra/go-playground/jp/internal/src-agent/memory"
 	"github.com/meshestra/go-playground/jp/internal/src-api/application"
 	"github.com/meshestra/go-playground/jp/internal/src-api/domain"
-	"github.com/meshestra/go-playground/jp/internal/src-api/infrastructure"
+	"github.com/meshestra/go-playground/jp/internal/src-api/presentation/http/adapter"
 )
 
 //go:embed static
@@ -29,8 +28,7 @@ var staticFiles embed.FS
 
 var datePattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 
-type Server struct {
-	server     *http.Server
+type Controller struct {
 	contentDir string
 	page       *template.Template
 	chat       application.ChatRunner
@@ -38,31 +36,7 @@ type Server struct {
 	generator  application.UserContentGenerator
 }
 
-func NewServer(addr, contentDir string, chat ...application.ChatRunner) (*Server, error) {
-	var runner application.ChatRunner
-	if len(chat) > 0 {
-		runner = chat[0]
-	}
-	return newServer(addr, contentDir, runner, infrastructure.Dependencies{})
-}
-
-func NewServerWithAuth(addr, contentDir string, chat application.ChatRunner, authService *auth.Service) (*Server, error) {
-	return newServer(addr, contentDir, chat, infrastructure.Dependencies{Auth: authService})
-}
-
-func NewServerWithAuthAndGenerator(addr, contentDir string, chat application.ChatRunner, authService *auth.Service, generator application.UserContentGenerator) (*Server, error) {
-	server, err := newServer(addr, contentDir, chat, infrastructure.Dependencies{Auth: authService, Generator: generator})
-	if err != nil {
-		return nil, err
-	}
-	server.generator = generator
-	return server, nil
-}
-
-func newServer(addr, contentDir string, runner application.ChatRunner, dependencies infrastructure.Dependencies) (*Server, error) {
-	if strings.TrimSpace(addr) == "" {
-		return nil, fmt.Errorf("web address is required")
-	}
+func NewController(contentDir string, dependencies adapter.Dependencies) (*Controller, error) {
 	if strings.TrimSpace(contentDir) == "" {
 		return nil, fmt.Errorf("content directory is required")
 	}
@@ -71,60 +45,12 @@ func newServer(addr, contentDir string, runner application.ChatRunner, dependenc
 		return nil, fmt.Errorf("parse web template: %w", err)
 	}
 
-	server := &Server{contentDir: contentDir, page: page, chat: runner, auth: dependencies.Auth, generator: dependencies.Generator}
-	mux := http.NewServeMux()
-	mux.Handle("/static/", http.FileServer(http.FS(staticFiles)))
-	assetFiles, err := fs.Sub(staticFiles, "static")
-	if err != nil {
-		return nil, fmt.Errorf("prepare web assets: %w", err)
-	}
-	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assetFiles))))
-	mux.HandleFunc("/api/auth/register", server.register)
-	mux.HandleFunc("/api/auth/login", server.login)
-	mux.HandleFunc("/api/auth/me", server.me)
-	mux.HandleFunc("/api/settings/topic", server.topicSetting)
-	mux.HandleFunc("/api/chat", server.chatMessage)
-	mux.HandleFunc("/api/chat/stream", server.chatStream)
-	mux.HandleFunc("/api/chat/history", server.chatHistory)
-	mux.HandleFunc("/api/learning-state", server.learningState)
-	mux.HandleFunc("/api/content/today", server.todayContent)
-	mux.HandleFunc("/api/content/", server.contentByDate)
-	mux.HandleFunc("/", server.index)
-
-	server.server = &http.Server{
-		Addr:              addr,
-		Handler:           withSecurityHeaders(mux),
-		ReadHeaderTimeout: 5 * time.Second,
-	}
-
-	return server, nil
+	return &Controller{contentDir: contentDir, page: page, chat: dependencies.Chat, auth: dependencies.Auth, generator: dependencies.Generator}, nil
 }
 
-func (s *Server) Run(ctx context.Context) error {
-	serverError := make(chan error, 1)
-	go func() {
-		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			serverError <- err
-		}
-		close(serverError)
-	}()
+func StaticFiles() embed.FS { return staticFiles }
 
-	select {
-	case err := <-serverError:
-		return err
-	case <-ctx.Done():
-		shutdownContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		if err := s.server.Shutdown(shutdownContext); err != nil {
-			return fmt.Errorf("shutdown web server: %w", err)
-		}
-
-		return nil
-	}
-}
-
-func (s *Server) index(writer http.ResponseWriter, request *http.Request) {
+func (s *Controller) Index(writer http.ResponseWriter, request *http.Request) {
 	if request.URL.Path != "/" && request.URL.Path != "/today" {
 		http.NotFound(writer, request)
 		return
@@ -151,7 +77,7 @@ func (s *Server) index(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
-func (s *Server) register(writer http.ResponseWriter, request *http.Request) {
+func (s *Controller) Register(writer http.ResponseWriter, request *http.Request) {
 	if request.Method != http.MethodPost {
 		writer.Header().Set("Allow", http.MethodPost)
 		http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
@@ -178,7 +104,7 @@ func (s *Server) register(writer http.ResponseWriter, request *http.Request) {
 	s.writeAuthResponse(writer, user, token)
 }
 
-func (s *Server) login(writer http.ResponseWriter, request *http.Request) {
+func (s *Controller) Login(writer http.ResponseWriter, request *http.Request) {
 	if request.Method != http.MethodPost {
 		writer.Header().Set("Allow", http.MethodPost)
 		http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
@@ -201,12 +127,12 @@ func (s *Server) login(writer http.ResponseWriter, request *http.Request) {
 	s.writeAuthResponse(writer, user, token)
 }
 
-func (s *Server) writeAuthResponse(writer http.ResponseWriter, user auth.User, token string) {
+func (s *Controller) writeAuthResponse(writer http.ResponseWriter, user auth.User, token string) {
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(writer).Encode(map[string]any{"token": token, "user": user})
 }
 
-func (s *Server) me(writer http.ResponseWriter, request *http.Request) {
+func (s *Controller) Me(writer http.ResponseWriter, request *http.Request) {
 	if request.Method != http.MethodGet {
 		writer.Header().Set("Allow", http.MethodGet)
 		http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
@@ -225,7 +151,7 @@ func (s *Server) me(writer http.ResponseWriter, request *http.Request) {
 	_ = json.NewEncoder(writer).Encode(user)
 }
 
-func (s *Server) topicSetting(writer http.ResponseWriter, request *http.Request) {
+func (s *Controller) TopicSetting(writer http.ResponseWriter, request *http.Request) {
 	userID, ok := s.requireUser(writer, request)
 	if !ok {
 		return
@@ -266,7 +192,7 @@ func (s *Server) topicSetting(writer http.ResponseWriter, request *http.Request)
 	}
 }
 
-func (s *Server) requireUser(writer http.ResponseWriter, request *http.Request) (string, bool) {
+func (s *Controller) requireUser(writer http.ResponseWriter, request *http.Request) (string, bool) {
 	if s.auth == nil {
 		http.Error(writer, "authentication unavailable", http.StatusServiceUnavailable)
 		return "", false
@@ -279,7 +205,7 @@ func (s *Server) requireUser(writer http.ResponseWriter, request *http.Request) 
 	return userID, true
 }
 
-func (s *Server) chatMessage(writer http.ResponseWriter, request *http.Request) {
+func (s *Controller) ChatMessage(writer http.ResponseWriter, request *http.Request) {
 	if request.Method != http.MethodPost {
 		writer.Header().Set("Allow", http.MethodPost)
 		http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
@@ -323,7 +249,7 @@ func (s *Server) chatMessage(writer http.ResponseWriter, request *http.Request) 
 	_ = json.NewEncoder(writer).Encode(map[string]string{"content": response.Content})
 }
 
-func (s *Server) chatStream(writer http.ResponseWriter, request *http.Request) {
+func (s *Controller) ChatStream(writer http.ResponseWriter, request *http.Request) {
 	if request.Method != http.MethodPost {
 		writer.Header().Set("Allow", http.MethodPost)
 		http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
@@ -389,7 +315,7 @@ func (s *Server) chatStream(writer http.ResponseWriter, request *http.Request) {
 	_ = send("done", map[string]any{"ok": true, "elapsed_ms": time.Since(startedAt).Milliseconds()})
 }
 
-func (s *Server) chatHistory(writer http.ResponseWriter, request *http.Request) {
+func (s *Controller) ChatHistory(writer http.ResponseWriter, request *http.Request) {
 	if request.Method != http.MethodGet {
 		writer.Header().Set("Allow", http.MethodGet)
 		http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
@@ -418,7 +344,7 @@ func (s *Server) chatHistory(writer http.ResponseWriter, request *http.Request) 
 	_ = json.NewEncoder(writer).Encode(history)
 }
 
-func (s *Server) learningState(writer http.ResponseWriter, request *http.Request) {
+func (s *Controller) LearningState(writer http.ResponseWriter, request *http.Request) {
 	userID, ok := s.requireUser(writer, request)
 	if !ok {
 		return
@@ -460,16 +386,16 @@ func (s *Server) learningState(writer http.ResponseWriter, request *http.Request
 	}
 }
 
-func (s *Server) todayContent(writer http.ResponseWriter, request *http.Request) {
+func (s *Controller) TodayContent(writer http.ResponseWriter, request *http.Request) {
 	if s.auth != nil {
 		if _, ok := s.requireUser(writer, request); !ok {
 			return
 		}
 	}
-	s.content(writer, request, time.Now().Format("2006-01-02"))
+	s.Content(writer, request, time.Now().Format("2006-01-02"))
 }
 
-func (s *Server) contentByDate(writer http.ResponseWriter, request *http.Request) {
+func (s *Controller) ContentByDate(writer http.ResponseWriter, request *http.Request) {
 	if s.auth != nil {
 		if _, ok := s.requireUser(writer, request); !ok {
 			return
@@ -485,10 +411,10 @@ func (s *Server) contentByDate(writer http.ResponseWriter, request *http.Request
 		return
 	}
 
-	s.content(writer, request, date)
+	s.Content(writer, request, date)
 }
 
-func (s *Server) content(writer http.ResponseWriter, request *http.Request, date string) {
+func (s *Controller) Content(writer http.ResponseWriter, request *http.Request, date string) {
 	if request.Method != http.MethodGet {
 		writer.Header().Set("Allow", http.MethodGet)
 		http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
@@ -524,7 +450,7 @@ func (s *Server) content(writer http.ResponseWriter, request *http.Request, date
 	_ = json.NewEncoder(writer).Encode(payload)
 }
 
-func (s *Server) loadContent(date string) (*content.DailyContent, error) {
+func (s *Controller) loadContent(date string) (*content.DailyContent, error) {
 	data, err := os.ReadFile(filepath.Join(s.contentDir, date+".json"))
 	if err != nil {
 		return nil, err
@@ -534,12 +460,4 @@ func (s *Server) loadContent(date string) (*content.DailyContent, error) {
 		return nil, err
 	}
 	return &daily, nil
-}
-
-func withSecurityHeaders(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		writer.Header().Set("X-Content-Type-Options", "nosniff")
-		writer.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'")
-		next.ServeHTTP(writer, request)
-	})
 }

@@ -16,7 +16,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-COPY --from=web-builder /web/dist/ ./internal/src-api/presentation/http/static/
+COPY --from=web-builder /web/dist/ ./internal/src-api/presentation/http/controller/static/
 RUN CGO_ENABLED=0 go build -o /out/api ./cmd/api \
     && CGO_ENABLED=0 go build -o /out/agent ./cmd/agent \
     && CGO_ENABLED=0 go build -o /out/batch ./cmd/batch

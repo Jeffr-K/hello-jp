@@ -6,12 +6,9 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/meshestra/go-playground/jp/internal/auth"
 	"github.com/meshestra/go-playground/jp/internal/config"
-	"github.com/meshestra/go-playground/jp/internal/src-agent"
 	"github.com/meshestra/go-playground/jp/internal/src-agent/memory"
 	"github.com/meshestra/go-playground/jp/internal/src-api/infrastructure/postgres"
-	httpapi "github.com/meshestra/go-playground/jp/internal/src-api/presentation/http"
 )
 
 func main() {
@@ -37,31 +34,9 @@ func main() {
 			_ = db.Close()
 			log.Fatal(err)
 		}
-		store = postgresStore
-		dbClose = db.Close
+		store, dbClose = postgresStore, db.Close
 	}
-	runtime, err := agent.NewConfiguredRuntimeWithStore(cfg, store)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer runtime.Close()
-	if dbClose != nil {
-		defer dbClose()
-	}
-	authService, err := auth.NewService(runtime, auth.Config{Secret: cfg.JWTSecret, Issuer: cfg.JWTIssuer, Audience: cfg.JWTAudience})
-	if err != nil {
-		log.Fatal(err)
-	}
-	generator, err := agent.New()
-	if err != nil {
-		log.Fatal(err)
-	}
-	server, err := httpapi.NewServerWithAuthAndGenerator(cfg.WebAddr, cfg.ContentDir, runtime, authService, generator)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("api server listening on %s", cfg.WebAddr)
-	if err := server.Run(ctx); err != nil && err != context.Canceled {
+	if err := bootAPI(ctx, cfg, store, dbClose); err != nil && err != context.Canceled {
 		log.Fatal(err)
 	}
 }

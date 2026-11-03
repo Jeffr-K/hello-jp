@@ -70,6 +70,7 @@ github.com/meshestra/go-playground/jp
 ```text
 .
 ├── cmd/api/main.go
+├── cmd/api/api_boot.go
 ├── cmd/agent/main.go
 ├── cmd/batch/main.go
 ├── Justfile
@@ -80,6 +81,9 @@ github.com/meshestra/go-playground/jp
 ├── internal/infrastructure/postgres/
 ├── internal/src-api/
 │   ├── presentation/http/
+│   │   ├── adapter/
+│   │   ├── controller/
+│   │   └── router/
 │   ├── application/
 │   ├── domain/
 │   └── infrastructure/
