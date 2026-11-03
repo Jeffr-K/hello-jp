@@ -31,6 +31,13 @@ service AgentService {
 // BatchService is exposed by API. Batch uses it instead of reading PostgreSQL
 // directly, so API remains the owner of user settings and generated state.
 service BatchService {
+  rpc ScheduleTopic(ScheduleTopicRequest) returns (ScheduleTopicResponse) {
+    option (google.api.http) = {
+      post: "/internal/v1/batch/topic-schedules"
+      body: "*"
+    };
+  }
+
   rpc GetTopicSchedules(TopicScheduleRequest) returns (TopicScheduleResponse) {
     option (google.api.http) = {
       get: "/internal/v1/batch/topic-schedules/{apply_date}"
@@ -83,6 +90,17 @@ message HistoryResponse {
 
 message TopicScheduleRequest {
   string apply_date = 1;
+}
+
+message ScheduleTopicRequest {
+  string user_id = 1;
+  string topic = 2;
+  string apply_date = 3;
+}
+
+message ScheduleTopicResponse {
+  bool scheduled = 1;
+  string apply_date = 2;
 }
 
 message TopicSchedule {

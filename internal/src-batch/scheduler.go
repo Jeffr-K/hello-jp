@@ -32,6 +32,7 @@ type Scheduler struct {
 	topics       TopicProvider
 	logger       *slog.Logger
 	now          func() time.Time
+	scheduled    map[string]auth.TopicSetting
 }
 
 func (s *Scheduler) SetIndexer(index func(context.Context, *content.DailyContent) error) {
@@ -60,7 +61,22 @@ func New(cfg config.Config, generate Generator, mail MailSender, logger *slog.Lo
 		location = time.Local
 	}
 
-	return &Scheduler{config: cfg, generate: generate, mail: mail, logger: logger, now: func() time.Time { return time.Now().In(location) }}, nil
+	return &Scheduler{config: cfg, generate: generate, mail: mail, logger: logger, now: func() time.Time { return time.Now().In(location) }, scheduled: make(map[string]auth.TopicSetting)}, nil
+}
+
+func (s *Scheduler) ScheduleTopic(ctx context.Context, setting auth.TopicSetting) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if setting.UserID == "" || strings.TrimSpace(setting.Topic) == "" {
+		return fmt.Errorf("user ID and topic are required")
+	}
+	if _, err := time.Parse("2006-01-02", setting.ApplyDate); err != nil {
+		return fmt.Errorf("invalid topic apply date")
+	}
+	s.scheduled[setting.UserID+"\x00"+setting.ApplyDate] = setting
+	s.logger.InfoContext(ctx, "topic scheduled", "user_id", setting.UserID, "apply_date", setting.ApplyDate)
+	return nil
 }
 
 func (s *Scheduler) Run(ctx context.Context) error {
@@ -80,8 +96,28 @@ func (s *Scheduler) Run(ctx context.Context) error {
 }
 
 func (s *Scheduler) RunOnce(ctx context.Context) error {
+	date := s.now().Format("2006-01-02")
+	var scheduled []auth.TopicSetting
+	for _, setting := range s.scheduled {
+		if setting.ApplyDate == date {
+			scheduled = append(scheduled, setting)
+		}
+	}
+	if len(scheduled) > 0 && s.userGenerate != nil {
+		for _, setting := range scheduled {
+			daily, err := s.userGenerate(ctx, setting.UserID, setting.Topic)
+			if err != nil {
+				return fmt.Errorf("generate scheduled user content: %w", err)
+			}
+			if s.index != nil {
+				if err := s.index(ctx, daily); err != nil {
+					return fmt.Errorf("index scheduled user content: %w", err)
+				}
+			}
+		}
+		return nil
+	}
 	if s.topics != nil && s.userGenerate != nil {
-		date := s.now().Format("2006-01-02")
 		settings, err := s.topics(ctx, date)
 		if err != nil {
 			return fmt.Errorf("load topic settings: %w", err)

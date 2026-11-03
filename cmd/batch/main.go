@@ -28,6 +28,7 @@ func main() {
 		log.Fatal(err)
 	}
 	job.SetIndexer(generator.IndexDaily)
+	job.SetUserGenerator(generator.RunForUser)
 	log.Printf("batch scheduler enabled at 06:00 (%s)", cfg.ScheduleTZ)
 	if err := job.Run(ctx); err != nil && err != context.Canceled {
 		log.Fatal(err)

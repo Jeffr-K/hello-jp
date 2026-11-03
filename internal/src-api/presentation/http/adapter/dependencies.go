@@ -1,6 +1,8 @@
 package adapter
 
 import (
+	"context"
+
 	"github.com/meshestra/go-playground/jp/internal/auth"
 	"github.com/meshestra/go-playground/jp/internal/src-api/application"
 )
@@ -10,4 +12,9 @@ type Dependencies struct {
 	Chat      application.ChatRunner
 	Auth      *auth.Service
 	Generator application.UserContentGenerator
+	Batch     TopicScheduler
+}
+
+type TopicScheduler interface {
+	ScheduleTopic(context.Context, auth.TopicSetting) error
 }

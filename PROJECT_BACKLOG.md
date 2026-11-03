@@ -46,6 +46,8 @@
 - PostgreSQL 어댑터를 `internal/infrastructure/postgres`로 분리
 - `cmd/api`, `cmd/agent`, `cmd/batch` 실행 파일 구성
 - Agent gRPC/gRPC-Gateway 계약 proto 추가
+- API 주제 저장 시 Batch `ScheduleTopic` 요청 포트 연결
+- Batch의 사용자/적용일 기준 예약 upsert 처리
 - 애플리케이션 진입점을 `cmd/api/main.go`, `cmd/agent/main.go`, `cmd/batch/main.go`로 이동
 - 채팅 일반 응답 API
 - 채팅 SSE API

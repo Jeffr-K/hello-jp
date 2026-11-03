@@ -34,6 +34,7 @@ type Controller struct {
 	chat       application.ChatRunner
 	auth       *auth.Service
 	generator  application.UserContentGenerator
+	batch      adapter.TopicScheduler
 }
 
 func NewController(contentDir string, dependencies adapter.Dependencies) (*Controller, error) {
@@ -45,7 +46,7 @@ func NewController(contentDir string, dependencies adapter.Dependencies) (*Contr
 		return nil, fmt.Errorf("parse web template: %w", err)
 	}
 
-	return &Controller{contentDir: contentDir, page: page, chat: dependencies.Chat, auth: dependencies.Auth, generator: dependencies.Generator}, nil
+	return &Controller{contentDir: contentDir, page: page, chat: dependencies.Chat, auth: dependencies.Auth, generator: dependencies.Generator, batch: dependencies.Batch}, nil
 }
 
 func StaticFiles() embed.FS { return staticFiles }
@@ -182,6 +183,12 @@ func (s *Controller) TopicSetting(writer http.ResponseWriter, request *http.Requ
 		if input.ApplyDate == time.Now().Format("2006-01-02") && s.generator != nil {
 			if _, err := s.generator.RunForUser(request.Context(), userID, input.Topic); err != nil {
 				http.Error(writer, "generate today's content failed", http.StatusBadGateway)
+				return
+			}
+		}
+		if s.batch != nil {
+			if err := s.batch.ScheduleTopic(request.Context(), auth.TopicSetting{UserID: userID, Topic: input.Topic, ApplyDate: input.ApplyDate}); err != nil {
+				http.Error(writer, "schedule topic failed", http.StatusBadGateway)
 				return
 			}
 		}
