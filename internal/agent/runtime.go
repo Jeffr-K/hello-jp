@@ -143,6 +143,10 @@ func (r *Runtime) GetTopicSetting(ctx context.Context, userID, date string) (aut
 	return r.memory.GetTopicSetting(ctx, userID, date)
 }
 
+func (r *Runtime) ListTopicSettings(ctx context.Context, date string) ([]auth.TopicSetting, error) {
+	return r.memory.ListTopicSettings(ctx, date)
+}
+
 func (r *Runtime) Run(ctx context.Context, userID, sessionID, input string) (llm.Message, error) {
 	if userID == "" || sessionID == "" {
 		return llm.Message{}, fmt.Errorf("user ID and session ID are required")

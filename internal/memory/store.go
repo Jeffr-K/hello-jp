@@ -50,6 +50,7 @@ type Store interface {
 	GetUser(context.Context, string) (auth.User, error)
 	SaveTopicSetting(context.Context, auth.TopicSetting) error
 	GetTopicSetting(context.Context, string, string) (auth.TopicSetting, error)
+	ListTopicSettings(context.Context, string) ([]auth.TopicSetting, error)
 }
 
 type InMemoryStore struct {
@@ -133,6 +134,21 @@ func (s *InMemoryStore) GetTopicSetting(ctx context.Context, userID, date string
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.topics[userID+"\x00"+date], nil
+}
+
+func (s *InMemoryStore) ListTopicSettings(ctx context.Context, date string) ([]auth.TopicSetting, error) {
+	if err := contextError(ctx); err != nil {
+		return nil, err
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var result []auth.TopicSetting
+	for _, setting := range s.topics {
+		if setting.ApplyDate == date {
+			result = append(result, setting)
+		}
+	}
+	return result, nil
 }
 
 func (s *InMemoryStore) GetLearningState(ctx context.Context, userID, lessonID string) (LearningState, error) {

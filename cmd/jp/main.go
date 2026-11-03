@@ -12,6 +12,7 @@ import (
 	"github.com/meshestra/go-playground/jp/internal/api"
 	"github.com/meshestra/go-playground/jp/internal/auth"
 	"github.com/meshestra/go-playground/jp/internal/config"
+	"github.com/meshestra/go-playground/jp/internal/repository/postgres"
 	"github.com/meshestra/go-playground/jp/internal/scheduler"
 )
 
@@ -61,6 +62,24 @@ func runScheduler(ctx context.Context) error {
 		return err
 	}
 	job.SetIndexer(generator.IndexDaily)
+	if cfg.DatabaseURL != "" {
+		db, err := postgres.Open(ctx, cfg.DatabaseURL)
+		if err != nil {
+			return err
+		}
+		store, err := postgres.NewStore(db)
+		if err != nil {
+			_ = db.Close()
+			return err
+		}
+		if err := store.EnsureSchema(ctx); err != nil {
+			_ = db.Close()
+			return err
+		}
+		job.SetTopicProvider(store.ListTopicSettings)
+		job.SetUserGenerator(generator.RunForUser)
+		defer db.Close()
+	}
 	log.Printf("daily scheduler enabled at 06:00 (%s)", cfg.ScheduleTZ)
 	return job.Run(ctx)
 }

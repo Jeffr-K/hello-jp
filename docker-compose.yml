@@ -68,6 +68,7 @@ services:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       CONTENT_DIR: /app/content
+      DATABASE_URL: postgres://${POSTGRES_USER:-today_japanese}:${POSTGRES_PASSWORD:-today_japanese_dev}@db:5432/${POSTGRES_DB:-today_japanese}?sslmode=disable
       QDRANT_URL: http://qdrant:6333
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-today_japanese}
       DAILY_LEVEL: ${DAILY_LEVEL:-N3}
@@ -80,6 +81,8 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-}
       EMAIL_RECIPIENTS: ${EMAIL_RECIPIENTS:-[]}
     depends_on:
+      db:
+        condition: service_healthy
       qdrant:
         condition: service_started
     volumes:

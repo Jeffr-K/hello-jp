@@ -38,6 +38,7 @@ type Store interface {
 	GetUser(context.Context, string) (User, error)
 	SaveTopicSetting(context.Context, TopicSetting) error
 	GetTopicSetting(context.Context, string, string) (TopicSetting, error)
+	ListTopicSettings(context.Context, string) ([]TopicSetting, error)
 }
 
 type Service struct {

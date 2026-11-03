@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/meshestra/go-playground/jp/internal/auth"
 	"github.com/meshestra/go-playground/jp/internal/config"
 	"github.com/meshestra/go-playground/jp/internal/content"
 )
@@ -19,18 +20,26 @@ type MailSender interface {
 	Send(context.Context, content.DailyContent, []string) error
 }
 
+type UserGenerator func(context.Context, string, string) (*content.DailyContent, error)
+type TopicProvider func(context.Context, string) ([]auth.TopicSetting, error)
+
 type Scheduler struct {
-	config   config.Config
-	generate Generator
-	mail     MailSender
-	index    func(context.Context, *content.DailyContent) error
-	logger   *slog.Logger
-	now      func() time.Time
+	config       config.Config
+	generate     Generator
+	mail         MailSender
+	index        func(context.Context, *content.DailyContent) error
+	userGenerate UserGenerator
+	topics       TopicProvider
+	logger       *slog.Logger
+	now          func() time.Time
 }
 
 func (s *Scheduler) SetIndexer(index func(context.Context, *content.DailyContent) error) {
 	s.index = index
 }
+
+func (s *Scheduler) SetUserGenerator(generate UserGenerator) { s.userGenerate = generate }
+func (s *Scheduler) SetTopicProvider(provider TopicProvider) { s.topics = provider }
 
 func New(cfg config.Config, generate Generator, mail MailSender, logger *slog.Logger) (*Scheduler, error) {
 	if generate == nil {
@@ -71,6 +80,28 @@ func (s *Scheduler) Run(ctx context.Context) error {
 }
 
 func (s *Scheduler) RunOnce(ctx context.Context) error {
+	if s.topics != nil && s.userGenerate != nil {
+		date := s.now().Format("2006-01-02")
+		settings, err := s.topics(ctx, date)
+		if err != nil {
+			return fmt.Errorf("load topic settings: %w", err)
+		}
+		for _, setting := range settings {
+			daily, err := s.userGenerate(ctx, setting.UserID, setting.Topic)
+			if err != nil {
+				return fmt.Errorf("generate user daily content: %w", err)
+			}
+			s.logger.InfoContext(ctx, "user daily content generated", "user_id", setting.UserID, "date", daily.Date, "theme", daily.Theme)
+			if s.index != nil {
+				if err := s.index(ctx, daily); err != nil {
+					return fmt.Errorf("index user daily content: %w", err)
+				}
+			}
+		}
+		if len(settings) > 0 {
+			return nil
+		}
+	}
 	daily, err := s.generate(ctx, s.config.DailyTopic)
 	if err != nil {
 		return fmt.Errorf("generate daily content: %w", err)

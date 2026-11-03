@@ -58,6 +58,26 @@ func (s *Store) GetTopicSetting(ctx context.Context, userID, date string) (auth.
 	return setting, nil
 }
 
+func (s *Store) ListTopicSettings(ctx context.Context, date string) ([]auth.TopicSetting, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT user_id, apply_date, topic, updated_at FROM topic_settings WHERE apply_date = $1 ORDER BY user_id`, date)
+	if err != nil {
+		return nil, fmt.Errorf("list topic settings: %w", err)
+	}
+	defer rows.Close()
+	var result []auth.TopicSetting
+	for rows.Next() {
+		var setting auth.TopicSetting
+		if err := rows.Scan(&setting.UserID, &setting.ApplyDate, &setting.Topic, &setting.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan topic setting: %w", err)
+		}
+		result = append(result, setting)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate topic settings: %w", err)
+	}
+	return result, nil
+}
+
 func NewStore(db *sql.DB) (*Store, error) {
 	if db == nil {
 		return nil, fmt.Errorf("database is required")
