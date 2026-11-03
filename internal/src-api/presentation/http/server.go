@@ -1,4 +1,4 @@
-package api
+package httpapi
 
 import (
 	"context"
@@ -19,6 +19,9 @@ import (
 	"github.com/meshestra/go-playground/jp/internal/content"
 	"github.com/meshestra/go-playground/jp/internal/llm"
 	"github.com/meshestra/go-playground/jp/internal/memory"
+	"github.com/meshestra/go-playground/jp/internal/src-api/application"
+	"github.com/meshestra/go-playground/jp/internal/src-api/domain"
+	"github.com/meshestra/go-playground/jp/internal/src-api/infrastructure"
 )
 
 //go:embed static
@@ -30,42 +33,25 @@ type Server struct {
 	server     *http.Server
 	contentDir string
 	page       *template.Template
-	chat       ChatRunner
+	chat       application.ChatRunner
 	auth       *auth.Service
-	generator  UserContentGenerator
+	generator  application.UserContentGenerator
 }
 
-type ChatRunner interface {
-	Run(context.Context, string, string, string) (llm.Message, error)
-}
-
-type ChatHistoryRunner interface {
-	History(context.Context, string, string, int) ([]llm.Message, error)
-}
-
-type LearningStateRunner interface {
-	LearningState(context.Context, string, string) (memory.LearningState, error)
-	SaveLearningState(context.Context, string, memory.LearningState) error
-}
-
-type UserContentGenerator interface {
-	RunForUser(context.Context, string, string) (*content.DailyContent, error)
-}
-
-func NewServer(addr, contentDir string, chat ...ChatRunner) (*Server, error) {
-	var runner ChatRunner
+func NewServer(addr, contentDir string, chat ...application.ChatRunner) (*Server, error) {
+	var runner application.ChatRunner
 	if len(chat) > 0 {
 		runner = chat[0]
 	}
-	return newServer(addr, contentDir, runner, nil)
+	return newServer(addr, contentDir, runner, infrastructure.Dependencies{})
 }
 
-func NewServerWithAuth(addr, contentDir string, chat ChatRunner, authService *auth.Service) (*Server, error) {
-	return newServer(addr, contentDir, chat, authService)
+func NewServerWithAuth(addr, contentDir string, chat application.ChatRunner, authService *auth.Service) (*Server, error) {
+	return newServer(addr, contentDir, chat, infrastructure.Dependencies{Auth: authService})
 }
 
-func NewServerWithAuthAndGenerator(addr, contentDir string, chat ChatRunner, authService *auth.Service, generator UserContentGenerator) (*Server, error) {
-	server, err := newServer(addr, contentDir, chat, authService)
+func NewServerWithAuthAndGenerator(addr, contentDir string, chat application.ChatRunner, authService *auth.Service, generator application.UserContentGenerator) (*Server, error) {
+	server, err := newServer(addr, contentDir, chat, infrastructure.Dependencies{Auth: authService, Generator: generator})
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +59,7 @@ func NewServerWithAuthAndGenerator(addr, contentDir string, chat ChatRunner, aut
 	return server, nil
 }
 
-func newServer(addr, contentDir string, runner ChatRunner, authService *auth.Service) (*Server, error) {
+func newServer(addr, contentDir string, runner application.ChatRunner, dependencies infrastructure.Dependencies) (*Server, error) {
 	if strings.TrimSpace(addr) == "" {
 		return nil, fmt.Errorf("web address is required")
 	}
@@ -85,7 +71,7 @@ func newServer(addr, contentDir string, runner ChatRunner, authService *auth.Ser
 		return nil, fmt.Errorf("parse web template: %w", err)
 	}
 
-	server := &Server{contentDir: contentDir, page: page, chat: runner, auth: authService}
+	server := &Server{contentDir: contentDir, page: page, chat: runner, auth: dependencies.Auth, generator: dependencies.Generator}
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.FileServer(http.FS(staticFiles)))
 	assetFiles, err := fs.Sub(staticFiles, "static")
@@ -175,11 +161,7 @@ func (s *Server) register(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "authentication unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	var input struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-		Name     string `json:"name"`
-	}
+	var input domain.RegisterRequest
 	if err := json.NewDecoder(http.MaxBytesReader(writer, request.Body, 16<<10)).Decode(&input); err != nil {
 		http.Error(writer, "invalid request", http.StatusBadRequest)
 		return
@@ -206,10 +188,7 @@ func (s *Server) login(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "authentication unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	var input struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+	var input domain.LoginRequest
 	if err := json.NewDecoder(http.MaxBytesReader(writer, request.Body, 16<<10)).Decode(&input); err != nil {
 		http.Error(writer, "invalid request", http.StatusBadRequest)
 		return
@@ -265,10 +244,7 @@ func (s *Server) topicSetting(writer http.ResponseWriter, request *http.Request)
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_ = json.NewEncoder(writer).Encode(setting)
 	case http.MethodPut:
-		var input struct {
-			Topic     string `json:"topic"`
-			ApplyDate string `json:"apply_date"`
-		}
+		var input domain.TopicSettingRequest
 		if err := json.NewDecoder(http.MaxBytesReader(writer, request.Body, 8<<10)).Decode(&input); err != nil {
 			http.Error(writer, "invalid request", http.StatusBadRequest)
 			return
@@ -419,7 +395,7 @@ func (s *Server) chatHistory(writer http.ResponseWriter, request *http.Request) 
 		http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	historyRunner, ok := s.chat.(ChatHistoryRunner)
+	historyRunner, ok := s.chat.(application.ChatHistoryRunner)
 	if !ok {
 		http.Error(writer, "chat history unavailable", http.StatusServiceUnavailable)
 		return
@@ -447,7 +423,7 @@ func (s *Server) learningState(writer http.ResponseWriter, request *http.Request
 	if !ok {
 		return
 	}
-	runner, ok := s.chat.(LearningStateRunner)
+	runner, ok := s.chat.(application.LearningStateRunner)
 	if !ok {
 		http.Error(writer, "learning state unavailable", http.StatusServiceUnavailable)
 		return

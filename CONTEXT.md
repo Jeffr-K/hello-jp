@@ -63,7 +63,7 @@ github.com/meshestra/go-playground/jp
 - `docker-compose.yml`
 - PostgreSQL 16 및 데이터 볼륨
 
-기존 콘텐츠 생성기는 `internal/agent/agent.go`에 유지하고, 새 Tool-calling Runtime은 `internal/agent/runtime.go`로 분리했다.
+기존 콘텐츠 생성기는 `internal/src-agent/agent.go`에 유지하고, 새 Tool-calling Runtime은 `internal/src-agent/runtime.go`로 분리했다.
 
 ## 주요 구조
 
@@ -74,14 +74,19 @@ github.com/meshestra/go-playground/jp
 ├── Dockerfile
 ├── docker-compose.yml
 ├── migrations/001_agent_memory.sql
-├── internal/agent/
 ├── internal/config/
 ├── internal/content/
 ├── internal/llm/
 ├── internal/memory/
 ├── internal/repository/postgres/
 ├── internal/tools/
-└── internal/api/static/index.html
+├── internal/src-api/
+│   ├── presentation/http/
+│   ├── application/
+│   ├── domain/
+│   └── infrastructure/
+├── internal/src-agent/
+└── internal/src-batch/
 ```
 
 ## 환경변수

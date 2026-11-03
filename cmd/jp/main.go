@@ -8,12 +8,12 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/meshestra/go-playground/jp/internal/agent"
-	"github.com/meshestra/go-playground/jp/internal/api"
 	"github.com/meshestra/go-playground/jp/internal/auth"
 	"github.com/meshestra/go-playground/jp/internal/config"
 	"github.com/meshestra/go-playground/jp/internal/repository/postgres"
-	"github.com/meshestra/go-playground/jp/internal/scheduler"
+	"github.com/meshestra/go-playground/jp/internal/src-agent"
+	httpapi "github.com/meshestra/go-playground/jp/internal/src-api/presentation/http"
+	"github.com/meshestra/go-playground/jp/internal/src-batch"
 )
 
 func main() {
@@ -142,7 +142,7 @@ func runWeb(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	server, err := api.NewServerWithAuthAndGenerator(cfg.WebAddr, cfg.ContentDir, runtime, authService, generator)
+	server, err := httpapi.NewServerWithAuthAndGenerator(cfg.WebAddr, cfg.ContentDir, runtime, authService, generator)
 	if err != nil {
 		return err
 	}

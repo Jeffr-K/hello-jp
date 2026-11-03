@@ -35,7 +35,10 @@
 
 ### 백엔드/API
 
-- Go HTTP 서버를 `internal/web`에서 `internal/api`로 분리
+- Go HTTP 서버를 `internal/src-api/presentation/http`로 분리
+- API를 `presentation`, `application`, `domain`, `infrastructure` 4계층으로 분리
+- Agent를 `internal/src-agent`로 분리
+- Scheduler를 `internal/src-batch`로 분리
 - 애플리케이션 진입점을 `cmd/jp/main.go`로 이동
 - 채팅 일반 응답 API
 - 채팅 SSE API
