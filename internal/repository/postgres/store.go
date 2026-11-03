@@ -6,12 +6,56 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/meshestra/go-playground/jp/internal/auth"
 	"github.com/meshestra/go-playground/jp/internal/llm"
 	"github.com/meshestra/go-playground/jp/internal/memory"
 )
 
 type Store struct {
 	db *sql.DB
+}
+
+func (s *Store) CreateUser(ctx context.Context, user auth.User) error {
+	_, err := s.db.ExecContext(ctx, `INSERT INTO users (id, email, name, password_hash, created_at) VALUES ($1, $2, $3, $4, $5)`, user.ID, user.Email, user.Name, user.PasswordHash, user.CreatedAt)
+	if err != nil {
+		return fmt.Errorf("create user: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) GetUserByEmail(ctx context.Context, email string) (auth.User, error) {
+	var user auth.User
+	err := s.db.QueryRowContext(ctx, `SELECT id, email, name, password_hash, created_at FROM users WHERE email = $1`, email).Scan(&user.ID, &user.Email, &user.Name, &user.PasswordHash, &user.CreatedAt)
+	if err != nil {
+		return auth.User{}, fmt.Errorf("get user by email: %w", err)
+	}
+	return user, nil
+}
+
+func (s *Store) GetUser(ctx context.Context, id string) (auth.User, error) {
+	var user auth.User
+	err := s.db.QueryRowContext(ctx, `SELECT id, email, name, password_hash, created_at FROM users WHERE id = $1`, id).Scan(&user.ID, &user.Email, &user.Name, &user.PasswordHash, &user.CreatedAt)
+	if err != nil {
+		return auth.User{}, fmt.Errorf("get user: %w", err)
+	}
+	return user, nil
+}
+
+func (s *Store) SaveTopicSetting(ctx context.Context, setting auth.TopicSetting) error {
+	_, err := s.db.ExecContext(ctx, `INSERT INTO topic_settings (user_id, apply_date, topic, updated_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (user_id, apply_date) DO UPDATE SET topic = EXCLUDED.topic, updated_at = NOW()`, setting.UserID, setting.ApplyDate, setting.Topic)
+	if err != nil {
+		return fmt.Errorf("save topic setting: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) GetTopicSetting(ctx context.Context, userID, date string) (auth.TopicSetting, error) {
+	var setting auth.TopicSetting
+	err := s.db.QueryRowContext(ctx, `SELECT user_id, apply_date, topic, updated_at FROM topic_settings WHERE user_id = $1 AND apply_date = $2`, userID, date).Scan(&setting.UserID, &setting.ApplyDate, &setting.Topic, &setting.UpdatedAt)
+	if err != nil {
+		return auth.TopicSetting{}, fmt.Errorf("get topic setting: %w", err)
+	}
+	return setting, nil
 }
 
 func NewStore(db *sql.DB) (*Store, error) {
@@ -247,6 +291,22 @@ func (s *Store) SaveLearningState(ctx context.Context, userID string, state memo
 }
 
 const schema = `
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS topic_settings (
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    apply_date DATE NOT NULL,
+    topic TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, apply_date)
+);
+
 CREATE TABLE IF NOT EXISTS agent_messages (
     id BIGSERIAL PRIMARY KEY,
     user_id TEXT NOT NULL,

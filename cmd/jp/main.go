@@ -10,6 +10,7 @@ import (
 
 	"github.com/meshestra/go-playground/jp/internal/agent"
 	"github.com/meshestra/go-playground/jp/internal/api"
+	"github.com/meshestra/go-playground/jp/internal/auth"
 	"github.com/meshestra/go-playground/jp/internal/config"
 	"github.com/meshestra/go-playground/jp/internal/scheduler"
 )
@@ -114,7 +115,15 @@ func runWeb(ctx context.Context) error {
 		return err
 	}
 	defer runtime.Close()
-	server, err := api.NewServer(cfg.WebAddr, cfg.ContentDir, runtime)
+	authService, err := auth.NewService(runtime, auth.Config{Secret: cfg.JWTSecret, Issuer: cfg.JWTIssuer, Audience: cfg.JWTAudience})
+	if err != nil {
+		return err
+	}
+	generator, err := agent.New()
+	if err != nil {
+		return err
+	}
+	server, err := api.NewServerWithAuthAndGenerator(cfg.WebAddr, cfg.ContentDir, runtime, authService, generator)
 	if err != nil {
 		return err
 	}

@@ -34,6 +34,9 @@ type Config struct {
 	QdrantCollection  string
 	EmbeddingProvider string
 	EmbeddingModel    string
+	JWTSecret         string
+	JWTIssuer         string
+	JWTAudience       string
 }
 
 // Load reads .env when present, then reads the process environment. Existing
@@ -66,6 +69,9 @@ func Load() (Config, error) {
 		QdrantCollection:  getEnv("QDRANT_COLLECTION", "today_japanese"),
 		EmbeddingProvider: getEnv("EMBEDDING_PROVIDER", getEnv("LLM_PROVIDER", "openai")),
 		EmbeddingModel:    embeddingModel(),
+		JWTSecret:         os.Getenv("JWT_SECRET"),
+		JWTIssuer:         getEnv("JWT_ISSUER", "hello-jp"),
+		JWTAudience:       getEnv("JWT_AUDIENCE", "hello-jp-web"),
 	}
 
 	return cfg, nil

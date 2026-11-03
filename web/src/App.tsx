@@ -16,9 +16,11 @@ type DailyContent = {
   practice?: { type: string; prompt: string; answer: string }[]
 }
 type LearningState = { lesson_id: string; viewed: boolean; practiced: boolean; correct: number; attempts: number; mastered: boolean; last_seen_at?: string }
+type User = { id: string; email: string; name: string; created_at: string }
 
 const historyKey = 'today-japanese-chat-history'
 const sessionKey = 'today-japanese-session-id'
+const tokenKey = 'today-japanese-access-token'
 const newSessionId = () => 'session-' + Date.now()
 
 function Icon({ name }: { name: 'menu' | 'panel-left' | 'panel-right' | 'plus' | 'x' | 'send' | 'globe' | 'moon' | 'sun' }) {
@@ -41,6 +43,8 @@ function readSessions(): ChatSession[] {
 }
 
 export function App() {
+  const [token, setToken] = useState(() => localStorage.getItem(tokenKey) || '')
+  const [user, setUser] = useState<User | null>(null)
   const [path, setPath] = useState(window.location.pathname)
   const [sessionId, setSessionId] = useState(() => new URLSearchParams(window.location.search).get('session_id') || localStorage.getItem(sessionKey) || newSessionId())
   const [sessions, setSessions] = useState<ChatSession[]>(readSessions)
@@ -59,6 +63,15 @@ export function App() {
   const [learningState, setLearningState] = useState<LearningState | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const authHeaders = useMemo<Record<string, string>>(() => ({ Authorization: token ? 'Bearer ' + token : '' }), [token])
+
+  useEffect(() => {
+    if (!token) return
+    fetch('/api/auth/me', { headers: authHeaders }).then((response) => response.ok ? response.json() as Promise<User> : Promise.reject(new Error('auth expired'))).then(setUser).catch(() => { localStorage.removeItem(tokenKey); setToken(''); setUser(null) })
+  }, [authHeaders, token])
+
+  const handleAuth = (nextToken: string, nextUser: User) => { localStorage.setItem(tokenKey, nextToken); setToken(nextToken); setUser(nextUser) }
+  const logout = () => { localStorage.removeItem(tokenKey); setToken(''); setUser(null) }
 
   const go = useCallback((nextPath: string, id = sessionId) => {
     const suffix = nextPath === '/' ? '?session_id=' + encodeURIComponent(id) : ''
@@ -71,12 +84,12 @@ export function App() {
 
   const loadHistory = useCallback(async (id: string) => {
     try {
-      const response = await fetch('/api/chat/history?session_id=' + encodeURIComponent(id))
+      const response = await fetch('/api/chat/history?session_id=' + encodeURIComponent(id), { headers: authHeaders })
       if (!response.ok) return setMessages([])
       const history = await response.json() as { role: string; content: string }[]
       setMessages(history.filter((message): message is ChatMessage => message.role === 'user' || message.role === 'assistant'))
     } catch { setMessages([]) }
-  }, [])
+  }, [authHeaders])
 
   useEffect(() => { localStorage.setItem(sessionKey, sessionId); if (path === '/') void loadHistory(sessionId) }, [loadHistory, path, sessionId])
   useEffect(() => {
@@ -85,20 +98,20 @@ export function App() {
   }, [darkMode])
   useEffect(() => {
     if (path !== '/today') return
-    fetch('/api/content/today').then((response) => response.ok ? response.json() : Promise.reject(new Error('오늘의 콘텐츠가 없습니다.'))).then(async (content: DailyContent) => {
+    fetch('/api/content/today', { headers: authHeaders }).then((response) => response.ok ? response.json() : Promise.reject(new Error('오늘의 콘텐츠가 없습니다.'))).then(async (content: DailyContent) => {
       setDaily(content); setDailyError('')
-      const stateResponse = await fetch('/api/learning-state?lesson_id=' + encodeURIComponent(content.date))
+      const stateResponse = await fetch('/api/learning-state?lesson_id=' + encodeURIComponent(content.date), { headers: authHeaders })
       if (stateResponse.ok) {
         const state = await stateResponse.json() as LearningState
         setLearningState(state)
         if (!state.viewed) {
           const next = { ...state, lesson_id: content.date, viewed: true, last_seen_at: new Date().toISOString() }
           setLearningState(next)
-          void fetch('/api/learning-state?lesson_id=' + encodeURIComponent(content.date), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) })
+          void fetch('/api/learning-state?lesson_id=' + encodeURIComponent(content.date), { method: 'PUT', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(next) })
         }
       }
     }).catch((error: Error) => setDailyError(error.message))
-  }, [path])
+  }, [authHeaders, path])
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading])
 
   const visibleSessions = useMemo(() => {
@@ -132,7 +145,7 @@ export function App() {
     let assistant = ''
     const started = performance.now()
     try {
-      const response = await fetch('/api/chat/stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: 'web-user', session_id: sessionId, input: text }) })
+      const response = await fetch('/api/chat/stream', { method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId, input: text }) })
       if (!response.ok || !response.body) throw new Error('chat stream failed')
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -169,6 +182,7 @@ export function App() {
     finally { setLoading(false); inputRef.current?.focus() }
   }
 
+  if (!token) return <AuthPage onAuth={handleAuth} />
   return <div className={'app-shell ' + (path === '/today' ? 'today-mode ' : '') + (darkMode ? 'theme-dark ' : '') + (leftFolded ? 'left-folded ' : '') + (rightFolded ? 'right-folded' : '')}>
     <header className="topbar">
       <button className="icon-button desktop-only" onClick={() => setLeftFolded((value) => !value)} aria-label="왼쪽 패널 접기"><Icon name="panel-left" /></button>
@@ -190,8 +204,8 @@ export function App() {
         <div className="session-list">{visibleSessions.map((session) => <div className={'session-item ' + (session.id === sessionId ? 'active' : '')} key={session.id}><button className="session-open" onClick={() => { go('/', session.id); void loadHistory(session.id) }}><strong>{session.title}</strong><span>{session.preview}</span></button><button className="session-delete" onClick={() => deleteSession(session.id)} aria-label="대화 삭제"><Icon name="x" /></button></div>)}</div>
         <button className="drawer-close mobile-only" onClick={() => setLeftOpen(false)}>닫기</button>
       </aside>
-      <main className="main-content">{path === '/today' ? <TodayPage content={daily} error={dailyError} state={learningState} setState={setLearningState} /> : <ChatPage messages={messages} loading={loading} input={input} setInput={setInput} sendMessage={sendMessage} inputRef={inputRef} bottomRef={bottomRef} />}</main>
-      <aside className={'sidebar right-sidebar ' + (rightOpen ? 'drawer-open' : '')}><a className="today-link" href="/today" onClick={(event) => { event.preventDefault(); go('/today') }}>오늘의 학습</a><button className="drawer-close mobile-only" onClick={() => setRightOpen(false)}>닫기</button></aside>
+      <main className="main-content">{path === '/today' ? <TodayPage content={daily} error={dailyError} state={learningState} setState={setLearningState} authHeaders={authHeaders} /> : path === '/settings' ? <SettingsPage user={user} authHeaders={authHeaders} onLogout={logout} /> : <ChatPage messages={messages} loading={loading} input={input} setInput={setInput} sendMessage={sendMessage} inputRef={inputRef} bottomRef={bottomRef} />}</main>
+      <aside className={'sidebar right-sidebar ' + (rightOpen ? 'drawer-open' : '')}><a className="today-link" href="/today" onClick={(event) => { event.preventDefault(); go('/today') }}>오늘의 학습</a><a className="settings-link" href="/settings" onClick={(event) => { event.preventDefault(); go('/settings') }}>내 정보 · 학습 설정</a><button className="drawer-close mobile-only" onClick={() => setRightOpen(false)}>닫기</button></aside>
     </div>
   </div>
 }
@@ -204,13 +218,42 @@ function ChatPage({ messages, loading, input, setInput, sendMessage, inputRef, b
   </section>
 }
 
-function TodayPage({ content, error, state, setState }: { content: DailyContent | null; error: string; state: LearningState | null; setState: (state: LearningState) => void }) {
+function AuthPage({ onAuth }: { onAuth: (token: string, user: User) => void }) {
+  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [name, setName] = useState('')
+  const [error, setError] = useState('')
+  const submit = async (event: FormEvent) => {
+    event.preventDefault(); setError('')
+    try {
+      const response = await fetch('/api/auth/' + mode, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, name }) })
+      if (!response.ok) throw new Error(await response.text())
+      const result = await response.json() as { token: string; user: User }
+      onAuth(result.token, result.user)
+    } catch (caught) { setError(caught instanceof Error ? caught.message : '인증에 실패했습니다.') }
+  }
+  return <main className="auth-page"><form className="auth-card" onSubmit={submit}><span className="eyebrow">Today Japanese</span><h1>{mode === 'login' ? '다시 만나요' : '학습 계정 만들기'}</h1><p>{mode === 'login' ? '로그인하고 나만의 일본어 학습을 이어가세요.' : '주제와 학습 기록을 저장하려면 가입하세요.'}</p>{mode === 'register' && <input value={name} onChange={(event) => setName(event.target.value)} placeholder="이름" autoComplete="name" required />}<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="이메일" autoComplete="email" required /><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호 (8자 이상)" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required />{error && <div className="auth-error">{error}</div>}<button className="auth-submit" type="submit">{mode === 'login' ? '로그인' : '회원가입'}</button><button className="auth-switch" type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError('') }}>{mode === 'login' ? '처음 시작하시나요? 회원가입' : '이미 계정이 있나요? 로그인'}</button></form></main>
+}
+
+function SettingsPage({ user, authHeaders, onLogout }: { user: User | null; authHeaders: Record<string, string>; onLogout: () => void }) {
+  const today = new Date(); const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
+  const formatDate = (date: Date) => date.toISOString().slice(0, 10)
+  const [topic, setTopic] = useState(''); const [applyDate, setApplyDate] = useState(formatDate(today)); const [message, setMessage] = useState('')
+  useEffect(() => { fetch('/api/settings/topic?date=' + applyDate, { headers: authHeaders }).then((response) => response.ok ? response.json() : null).then((setting: authTopic | null) => { if (setting?.topic) setTopic(setting.topic) }) }, [applyDate, authHeaders])
+  const save = async (event: FormEvent) => { event.preventDefault(); setMessage(''); const response = await fetch('/api/settings/topic', { method: 'PUT', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ topic, apply_date: applyDate }) }); setMessage(response.ok ? `${applyDate}부터 적용됩니다.` : await response.text()) }
+  return <section className="settings-page"><div className="settings-header"><span className="eyebrow">My Account</span><h1>내 정보</h1><p>나에게 맞는 오늘의 학습을 설정하세요.</p></div><div className="settings-grid"><section className="settings-card"><h2>계정</h2><strong>{user?.name}</strong><span>{user?.email}</span><button className="auth-switch" type="button" onClick={onLogout}>로그아웃</button></section><form className="settings-card topic-form" onSubmit={save}><h2>오늘의 학습 설정</h2><label>학습 주제<input value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="예: 일본 여행 회화" required /></label><label>적용 시점<select value={applyDate} onChange={(event) => setApplyDate(event.target.value)}><option value={formatDate(today)}>오늘 바로 적용</option><option value={formatDate(tomorrow)}>내일부터 적용</option></select></label>{message && <p className="settings-message">{message}</p>}<button className="auth-submit" type="submit">주제 저장</button></form></div></section>
+}
+
+type authTopic = { topic?: string; apply_date?: string }
+
+function TodayPage({ content, error, state, setState, authHeaders }: { content: DailyContent | null; error: string; state: LearningState | null; setState: (state: LearningState) => void; authHeaders: Record<string, string> }) {
   if (error) return <div className="today-page"><p className="error">{error}</p></div>
   if (!content) return <div className="today-page"><p>오늘의 학습을 불러오는 중…</p></div>
   const markPracticed = () => {
     const next = { ...(state || { lesson_id: content.date, viewed: true, practiced: false, correct: 0, attempts: 0, mastered: false }), practiced: true, attempts: (state?.attempts || 0) + 1, last_seen_at: new Date().toISOString() }
     setState(next)
-    void fetch('/api/learning-state?lesson_id=' + encodeURIComponent(content.date), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) })
+    void fetch('/api/learning-state?lesson_id=' + encodeURIComponent(content.date), { method: 'PUT', headers: { ...authHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(next) })
   }
   return <section className="today-page">
     <header className="today-header"><span className="eyebrow">Daily Japanese</span><h1>{content.theme}</h1><p>{content.date} · {content.level}{content.situation ? ' · ' + content.situation : ''}</p></header>

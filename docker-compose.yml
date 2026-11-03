@@ -41,6 +41,9 @@ services:
       LLM_MODEL: ${LLM_MODEL:-gpt-5-mini}
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-replace-this-in-production}
+      JWT_ISSUER: ${JWT_ISSUER:-hello-jp}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-hello-jp-web}
       QDRANT_URL: http://qdrant:6333
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-today_japanese}
       CONTENT_DIR: /app/content
@@ -50,7 +53,7 @@ services:
     ports:
       - "${WEB_PORT:-8082}:8080"
     volumes:
-      - ./content:/app/content:ro
+      - ./content:/app/content
     command: ["-mode", "web"]
 
   scheduler:

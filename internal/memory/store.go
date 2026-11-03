@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/meshestra/go-playground/jp/internal/auth"
 	"github.com/meshestra/go-playground/jp/internal/llm"
 )
 
@@ -44,6 +45,11 @@ type Store interface {
 	ListEpisodes(ctx context.Context, userID string, limit int) ([]Episode, error)
 	GetLearningState(ctx context.Context, userID, lessonID string) (LearningState, error)
 	SaveLearningState(ctx context.Context, userID string, state LearningState) error
+	CreateUser(context.Context, auth.User) error
+	GetUserByEmail(context.Context, string) (auth.User, error)
+	GetUser(context.Context, string) (auth.User, error)
+	SaveTopicSetting(context.Context, auth.TopicSetting) error
+	GetTopicSetting(context.Context, string, string) (auth.TopicSetting, error)
 }
 
 type InMemoryStore struct {
@@ -52,6 +58,9 @@ type InMemoryStore struct {
 	profiles map[string]LearningProfile
 	episodes map[string][]Episode
 	states   map[string]LearningState
+	users    map[string]auth.User
+	emails   map[string]string
+	topics   map[string]auth.TopicSetting
 }
 
 func NewInMemoryStore() *InMemoryStore {
@@ -60,7 +69,70 @@ func NewInMemoryStore() *InMemoryStore {
 		profiles: make(map[string]LearningProfile),
 		episodes: make(map[string][]Episode),
 		states:   make(map[string]LearningState),
+		users:    make(map[string]auth.User),
+		emails:   make(map[string]string),
+		topics:   make(map[string]auth.TopicSetting),
 	}
+}
+
+func (s *InMemoryStore) CreateUser(ctx context.Context, user auth.User) error {
+	if err := contextError(ctx); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, exists := s.emails[user.Email]; exists {
+		return auth.ErrEmailExists
+	}
+	s.users[user.ID] = user
+	s.emails[user.Email] = user.ID
+	return nil
+}
+
+func (s *InMemoryStore) GetUserByEmail(ctx context.Context, email string) (auth.User, error) {
+	if err := contextError(ctx); err != nil {
+		return auth.User{}, err
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	id, ok := s.emails[email]
+	if !ok {
+		return auth.User{}, fmt.Errorf("user not found")
+	}
+	return s.users[id], nil
+}
+
+func (s *InMemoryStore) GetUser(ctx context.Context, id string) (auth.User, error) {
+	if err := contextError(ctx); err != nil {
+		return auth.User{}, err
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	user, ok := s.users[id]
+	if !ok {
+		return auth.User{}, fmt.Errorf("user not found")
+	}
+	return user, nil
+}
+
+func (s *InMemoryStore) SaveTopicSetting(ctx context.Context, setting auth.TopicSetting) error {
+	if err := contextError(ctx); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	setting.UpdatedAt = time.Now().UTC()
+	s.topics[setting.UserID+"\x00"+setting.ApplyDate] = setting
+	return nil
+}
+
+func (s *InMemoryStore) GetTopicSetting(ctx context.Context, userID, date string) (auth.TopicSetting, error) {
+	if err := contextError(ctx); err != nil {
+		return auth.TopicSetting{}, err
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.topics[userID+"\x00"+date], nil
 }
 
 func (s *InMemoryStore) GetLearningState(ctx context.Context, userID, lessonID string) (LearningState, error) {

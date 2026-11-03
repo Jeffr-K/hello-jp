@@ -128,6 +128,27 @@ func (a *Agent) Run(ctx context.Context, topic string) (*content.DailyContent, e
 	return &daily, nil
 }
 
+// RunForUser generates a lesson and stores a user-scoped copy so authenticated
+// learners can keep different daily topics without overwriting each other.
+func (a *Agent) RunForUser(ctx context.Context, userID, topic string) (*content.DailyContent, error) {
+	daily, err := a.Run(ctx, topic)
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(filepath.Join(a.config.ContentDir, daily.Date+".json"))
+	if err != nil {
+		return nil, fmt.Errorf("read generated content: %w", err)
+	}
+	directory := filepath.Join(a.config.ContentDir, "users", userID)
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		return nil, fmt.Errorf("create user content directory: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, daily.Date+".json"), data, 0o644); err != nil {
+		return nil, fmt.Errorf("save user content: %w", err)
+	}
+	return daily, nil
+}
+
 func (a *Agent) IndexDaily(ctx context.Context, daily *content.DailyContent) error {
 	if a.config.QdrantURL == "" || daily == nil {
 		return nil

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/meshestra/go-playground/jp/internal/auth"
 	"github.com/meshestra/go-playground/jp/internal/llm"
 	"github.com/meshestra/go-playground/jp/internal/memory"
 	"github.com/meshestra/go-playground/jp/internal/prompts"
@@ -124,6 +125,22 @@ func (r *Runtime) LearningState(ctx context.Context, userID, lessonID string) (m
 
 func (r *Runtime) SaveLearningState(ctx context.Context, userID string, state memory.LearningState) error {
 	return r.memory.SaveLearningState(ctx, userID, state)
+}
+
+func (r *Runtime) CreateUser(ctx context.Context, user auth.User) error {
+	return r.memory.CreateUser(ctx, user)
+}
+func (r *Runtime) GetUserByEmail(ctx context.Context, email string) (auth.User, error) {
+	return r.memory.GetUserByEmail(ctx, email)
+}
+func (r *Runtime) GetUser(ctx context.Context, id string) (auth.User, error) {
+	return r.memory.GetUser(ctx, id)
+}
+func (r *Runtime) SaveTopicSetting(ctx context.Context, setting auth.TopicSetting) error {
+	return r.memory.SaveTopicSetting(ctx, setting)
+}
+func (r *Runtime) GetTopicSetting(ctx context.Context, userID, date string) (auth.TopicSetting, error) {
+	return r.memory.GetTopicSetting(ctx, userID, date)
 }
 
 func (r *Runtime) Run(ctx context.Context, userID, sessionID, input string) (llm.Message, error) {
