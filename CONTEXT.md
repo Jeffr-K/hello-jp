@@ -69,24 +69,31 @@ github.com/meshestra/go-playground/jp
 
 ```text
 .
-├── cmd/jp/main.go
+├── cmd/api/main.go
+├── cmd/agent/main.go
+├── cmd/batch/main.go
 ├── Justfile
 ├── Dockerfile
 ├── docker-compose.yml
 ├── migrations/001_agent_memory.sql
 ├── internal/config/
-├── internal/content/
-├── internal/llm/
-├── internal/memory/
-├── internal/repository/postgres/
-├── internal/tools/
+├── internal/infrastructure/postgres/
 ├── internal/src-api/
 │   ├── presentation/http/
 │   ├── application/
 │   ├── domain/
 │   └── infrastructure/
 ├── internal/src-agent/
-└── internal/src-batch/
+│   ├── content/
+│   ├── llm/
+│   ├── memory/
+│   ├── prompts/
+│   ├── retrieval/
+│   └── tools/
+├── internal/src-batch/
+├── proto/agent/v1/agent.proto
+├── buf.yaml
+└── buf.gen.yaml
 ```
 
 ## 환경변수
@@ -130,7 +137,7 @@ http://localhost:8080
 Agent Runtime 실행:
 
 ```bash
-go run ./cmd/jp -mode agent \
+go run ./cmd/agent -input \
   -user-id demo-user \
   -session-id default \
   -input "오늘 공부할 일본어를 추천해줘"
@@ -141,6 +148,17 @@ go run ./cmd/jp -mode agent \
 ```bash
 just generate topic="운동과 관련된 일본어"
 ```
+
+실행 파일은 세 개로 분리한다.
+
+```text
+cmd/api    HTTP API와 React 서빙
+cmd/agent  Agent 실행 및 Agent gRPC 서버
+cmd/batch  예약 콘텐츠 생성 배치
+```
+
+Agent 통신 계약은 `proto/agent/v1/agent.proto`에 정의하고, `just proto`로
+gRPC 및 gRPC-Gateway 코드를 생성한다.
 
 ## Docker 실행
 

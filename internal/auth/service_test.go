@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/meshestra/go-playground/jp/internal/auth"
-	"github.com/meshestra/go-playground/jp/internal/memory"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/memory"
 )
 
 func TestRegisterLoginAndAuthenticate(t *testing.T) {

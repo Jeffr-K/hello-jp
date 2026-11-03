@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package hello_jp.agent.v1;
+
+option go_package = "github.com/Jeffr-K/hello-jp/internal/gen/agent/v1;agentv1";
+
+import "google/api/annotations.proto";
+
+service AgentService {
+  rpc Chat(ChatRequest) returns (ChatResponse) {
+    option (google.api.http) = {
+      post: "/internal/v1/agent/chat"
+      body: "*"
+    };
+  }
+
+  rpc GenerateDaily(GenerateDailyRequest) returns (GenerateDailyResponse) {
+    option (google.api.http) = {
+      post: "/internal/v1/agent/daily"
+      body: "*"
+    };
+  }
+
+  rpc History(HistoryRequest) returns (HistoryResponse) {
+    option (google.api.http) = {
+      get: "/internal/v1/agent/history/{user_id}/{session_id}"
+    };
+  }
+}
+
+// BatchService is exposed by API. Batch uses it instead of reading PostgreSQL
+// directly, so API remains the owner of user settings and generated state.
+service BatchService {
+  rpc GetTopicSchedules(TopicScheduleRequest) returns (TopicScheduleResponse) {
+    option (google.api.http) = {
+      get: "/internal/v1/batch/topic-schedules/{apply_date}"
+    };
+  }
+
+  rpc PublishDailyContent(PublishDailyContentRequest) returns (PublishDailyContentResponse) {
+    option (google.api.http) = {
+      post: "/internal/v1/batch/daily-content"
+      body: "*"
+    };
+  }
+}
+
+message ChatRequest {
+  string user_id = 1;
+  string session_id = 2;
+  string input = 3;
+}
+
+message ChatResponse {
+  string content = 1;
+}
+
+message GenerateDailyRequest {
+  string user_id = 1;
+  string topic = 2;
+}
+
+message GenerateDailyResponse {
+  string date = 1;
+  string theme = 2;
+  string content_path = 3;
+}
+
+message HistoryRequest {
+  string user_id = 1;
+  string session_id = 2;
+  int32 limit = 3;
+}
+
+message HistoryMessage {
+  string role = 1;
+  string content = 2;
+}
+
+message HistoryResponse {
+  repeated HistoryMessage messages = 1;
+}
+
+message TopicScheduleRequest {
+  string apply_date = 1;
+}
+
+message TopicSchedule {
+  string user_id = 1;
+  string topic = 2;
+  string apply_date = 3;
+}
+
+message TopicScheduleResponse {
+  repeated TopicSchedule schedules = 1;
+}
+
+message PublishDailyContentRequest {
+  string user_id = 1;
+  string date = 2;
+  string content_json = 3;
+}
+
+message PublishDailyContentResponse {
+  bool saved = 1;
+  string content_path = 2;
+}

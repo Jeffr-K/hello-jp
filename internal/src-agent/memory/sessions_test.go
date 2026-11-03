@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/meshestra/go-playground/jp/internal/llm"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/llm"
 )
 
 func TestInMemoryStoreListsUserSessions(t *testing.T) {

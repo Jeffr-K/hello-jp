@@ -3,9 +3,9 @@ package application
 import (
 	"context"
 
-	"github.com/meshestra/go-playground/jp/internal/content"
-	"github.com/meshestra/go-playground/jp/internal/llm"
-	"github.com/meshestra/go-playground/jp/internal/memory"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/content"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/llm"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/memory"
 )
 
 // ChatRunner is the application boundary used by HTTP presentation handlers.

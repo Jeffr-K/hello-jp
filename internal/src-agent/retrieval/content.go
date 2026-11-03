@@ -3,7 +3,7 @@ package retrieval
 import (
 	"fmt"
 
-	"github.com/meshestra/go-playground/jp/internal/content"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/content"
 )
 
 func DocumentsFromDailyContent(daily content.DailyContent) []Document {

@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/meshestra/go-playground/jp/internal/config"
-	"github.com/meshestra/go-playground/jp/internal/content"
-	"github.com/meshestra/go-playground/jp/internal/retrieval"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/content"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/retrieval"
 )
 
 type Agent struct {

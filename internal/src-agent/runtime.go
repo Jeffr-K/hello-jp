@@ -8,11 +8,11 @@ import (
 	"strings"
 
 	"github.com/meshestra/go-playground/jp/internal/auth"
-	"github.com/meshestra/go-playground/jp/internal/llm"
-	"github.com/meshestra/go-playground/jp/internal/memory"
-	"github.com/meshestra/go-playground/jp/internal/prompts"
-	"github.com/meshestra/go-playground/jp/internal/retrieval"
-	"github.com/meshestra/go-playground/jp/internal/tools"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/llm"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/memory"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/prompts"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/retrieval"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/tools"
 )
 
 const (

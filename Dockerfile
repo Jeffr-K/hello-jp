@@ -17,7 +17,9 @@ RUN go mod download
 
 COPY . .
 COPY --from=web-builder /web/dist/ ./internal/src-api/presentation/http/static/
-RUN CGO_ENABLED=0 go build -o /out/jp ./cmd/jp
+RUN CGO_ENABLED=0 go build -o /out/api ./cmd/api \
+    && CGO_ENABLED=0 go build -o /out/agent ./cmd/agent \
+    && CGO_ENABLED=0 go build -o /out/batch ./cmd/batch
 
 FROM alpine:3.22
 
@@ -25,10 +27,12 @@ RUN apk add --no-cache tzdata
 RUN addgroup -S app && adduser -S app -G app
 
 WORKDIR /app
-COPY --from=builder /out/jp /app/jp
+COPY --from=builder /out/api /app/api
+COPY --from=builder /out/agent /app/agent
+COPY --from=builder /out/batch /app/batch
 
 RUN mkdir -p /app/content && chown -R app:app /app
 USER app
 
 EXPOSE 8080
-ENTRYPOINT ["/app/jp"]
+ENTRYPOINT ["/app/api"]

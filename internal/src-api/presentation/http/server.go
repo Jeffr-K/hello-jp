@@ -16,9 +16,9 @@ import (
 	"time"
 
 	"github.com/meshestra/go-playground/jp/internal/auth"
-	"github.com/meshestra/go-playground/jp/internal/content"
-	"github.com/meshestra/go-playground/jp/internal/llm"
-	"github.com/meshestra/go-playground/jp/internal/memory"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/content"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/llm"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/memory"
 	"github.com/meshestra/go-playground/jp/internal/src-api/application"
 	"github.com/meshestra/go-playground/jp/internal/src-api/domain"
 	"github.com/meshestra/go-playground/jp/internal/src-api/infrastructure"

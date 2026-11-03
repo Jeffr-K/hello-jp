@@ -39,7 +39,12 @@
 - API를 `presentation`, `application`, `domain`, `infrastructure` 4계층으로 분리
 - Agent를 `internal/src-agent`로 분리
 - Scheduler를 `internal/src-batch`로 분리
-- 애플리케이션 진입점을 `cmd/jp/main.go`로 이동
+- `content`를 `internal/src-agent/content`로 이동
+- Agent 전용 `llm`, `prompts`, `memory`, `retrieval`, `tools`를 `internal/src-agent`로 이동
+- PostgreSQL 어댑터를 `internal/infrastructure/postgres`로 분리
+- `cmd/api`, `cmd/agent`, `cmd/batch` 실행 파일 구성
+- Agent gRPC/gRPC-Gateway 계약 proto 추가
+- 애플리케이션 진입점을 `cmd/api/main.go`, `cmd/agent/main.go`, `cmd/batch/main.go`로 이동
 - 채팅 일반 응답 API
 - 채팅 SSE API
 - 세션 히스토리 API

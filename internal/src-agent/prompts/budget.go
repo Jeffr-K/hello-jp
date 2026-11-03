@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	"github.com/meshestra/go-playground/jp/internal/llm"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/llm"
 )
 
 type Budget struct {

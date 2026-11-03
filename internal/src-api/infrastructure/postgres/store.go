@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/meshestra/go-playground/jp/internal/auth"
-	"github.com/meshestra/go-playground/jp/internal/llm"
-	"github.com/meshestra/go-playground/jp/internal/memory"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/llm"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/memory"
 )
 
 type Store struct {

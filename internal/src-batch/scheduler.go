@@ -11,7 +11,7 @@ import (
 
 	"github.com/meshestra/go-playground/jp/internal/auth"
 	"github.com/meshestra/go-playground/jp/internal/config"
-	"github.com/meshestra/go-playground/jp/internal/content"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/content"
 )
 
 type Generator func(context.Context, string) (*content.DailyContent, error)

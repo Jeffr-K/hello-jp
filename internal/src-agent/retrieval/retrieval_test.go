@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/meshestra/go-playground/jp/internal/content"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/content"
 )
 
 func TestDailyContentDocumentsCarryProvenance(t *testing.T) {

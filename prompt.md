@@ -17,7 +17,7 @@
 
 현재 개발 중인 **Today Japanese**는 한국어 사용자를 위한 개인화 일본어 학습 AI Agent입니다.
 
-이번 작업의 범위는 `internal/prompts` 패키지와 Agent Runtime의 프롬프트 통합 계층입니다.
+이번 작업의 범위는 `internal/src-agent/prompts` 패키지와 Agent Runtime의 프롬프트 통합 계층입니다.
 
 단순한 문자열 템플릿 관리자가 아니라 다음 기능을 갖춘 Prompt Management System을 구현해야 합니다.
 

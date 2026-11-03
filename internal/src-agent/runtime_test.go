@@ -8,9 +8,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/meshestra/go-playground/jp/internal/llm"
-	"github.com/meshestra/go-playground/jp/internal/memory"
-	"github.com/meshestra/go-playground/jp/internal/tools"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/llm"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/memory"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/tools"
 )
 
 type fakeProvider struct {

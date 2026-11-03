@@ -8,15 +8,21 @@ import (
 	"path/filepath"
 
 	"github.com/meshestra/go-playground/jp/internal/config"
-	"github.com/meshestra/go-playground/jp/internal/content"
-	"github.com/meshestra/go-playground/jp/internal/llm"
-	"github.com/meshestra/go-playground/jp/internal/memory"
-	"github.com/meshestra/go-playground/jp/internal/repository/postgres"
-	"github.com/meshestra/go-playground/jp/internal/retrieval"
-	"github.com/meshestra/go-playground/jp/internal/tools"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/content"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/llm"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/memory"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/retrieval"
+	"github.com/meshestra/go-playground/jp/internal/src-agent/tools"
 )
 
 func NewConfiguredRuntime(config config.Config) (*Runtime, error) {
+	return NewConfiguredRuntimeWithStore(config, nil)
+}
+
+// NewConfiguredRuntimeWithStore builds the Agent runtime with a store owned by
+// the composing process. API owns PostgreSQL; Agent and Batch can use memory
+// or a gRPC-backed adapter without importing a database implementation.
+func NewConfiguredRuntimeWithStore(config config.Config, provided memory.Store) (*Runtime, error) {
 	var provider llm.Provider
 	var err error
 	switch config.LLMProvider {
@@ -31,8 +37,10 @@ func NewConfiguredRuntime(config config.Config) (*Runtime, error) {
 		return nil, fmt.Errorf("create LLM provider: %w", err)
 	}
 
-	var store memory.Store = memory.NewInMemoryStore()
-	var closeStore func() error
+	var store memory.Store = provided
+	if store == nil {
+		store = memory.NewInMemoryStore()
+	}
 	var retriever retrieval.Index
 	if config.QdrantURL != "" {
 		embedder, err := newEmbedder(config)
@@ -47,26 +55,6 @@ func NewConfiguredRuntime(config config.Config) (*Runtime, error) {
 		if err := indexAllDailyContent(context.Background(), config.ContentDir, index); err != nil {
 			return nil, fmt.Errorf("index daily content: %w", err)
 		}
-	}
-
-	if config.DatabaseURL != "" {
-		db, err := postgres.Open(context.Background(), config.DatabaseURL)
-		if err != nil {
-			return nil, fmt.Errorf("open memory database: %w", err)
-		}
-
-		postgresStore, err := postgres.NewStore(db)
-		if err != nil {
-			_ = db.Close()
-			return nil, fmt.Errorf("create memory database store: %w", err)
-		}
-		if err := postgresStore.EnsureSchema(context.Background()); err != nil {
-			_ = db.Close()
-			return nil, err
-		}
-
-		store = postgresStore
-		closeStore = db.Close
 	}
 
 	registry := tools.NewRegistry()
@@ -110,7 +98,6 @@ func NewConfiguredRuntime(config config.Config) (*Runtime, error) {
 		StructuredOutput:  true,
 		ValidationRetries: 1,
 		Retriever:         retriever,
-		Close:             closeStore,
 	})
 }
 
